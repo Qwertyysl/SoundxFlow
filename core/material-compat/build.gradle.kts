@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.soundpod.materialcompat"
+    namespace = "com.soundxflow.materialcompat"
     compileSdk = 36
 
     defaultConfig {

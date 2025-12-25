@@ -16,11 +16,11 @@ kotlin {
 }
 
 android {
-    namespace = "com.github.soundpod"
+    namespace = "com.github.soundxflow"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.github.soundpod"
+        applicationId = "com.github.soundxflow"
         minSdk = 23
         targetSdk = 36
         versionCode = 13

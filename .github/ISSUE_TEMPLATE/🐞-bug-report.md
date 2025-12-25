@@ -1,6 +1,6 @@
 ---
 name: "\U0001F41E Bug Report"
-about: Report something that isn't working correctly in SoundPod
+about: Report something that isn't working correctly in SoundxFlow
 title: Bug
 labels: bug
 assignees: ''

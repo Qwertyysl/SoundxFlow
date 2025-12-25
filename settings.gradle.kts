@@ -17,7 +17,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "SoundPod"
+rootProject.name = "SoundxFlow"
 
 // Modules
 include(":app")

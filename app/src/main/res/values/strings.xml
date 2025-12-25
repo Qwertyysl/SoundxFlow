@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name" translatable="false">SoundPod</string>
+    <string name="app_name" translatable="false">SoundxFlow</string>
     <string name="home">Home</string>
     <string name="songs">Songs</string>
     <string name="playlists">Playlists</string>
@@ -228,7 +228,7 @@
     <string name="seamless_update">Seamless Update</string>
     <string name="seamless_update_description">Install updates directly from app</string>
     <string name="enable_seamless_update">Enable Seamless Updates?</string>
-    <string name="enable_seamless_update_description">To install updates internally, SoundPod needs permission to install unknown apps.\\n\\nOtherwise, updates will be saved to your Downloads folder.</string>
+    <string name="enable_seamless_update_description">To install updates internally, SoundxFlow needs permission to install unknown apps.\\n\\nOtherwise, updates will be saved to your Downloads folder.</string>
     <string name="permissions">Permissions</string>
     <string name="notifications">Notifications</string>
     <string name="update_now">Update Now</string>
