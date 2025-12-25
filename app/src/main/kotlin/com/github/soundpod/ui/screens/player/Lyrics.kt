@@ -123,64 +123,73 @@ fun Lyrics(
                 Database.lyrics(mediaId).collect { dbLyrics ->
                     lyricsModel = dbLyrics
                     if ((isShowingSynchronizedLyrics || isFloatingLyricsEnabled) && dbLyrics?.synced == null) {
+                        // --- IMPROVED LYRICS FETCHING CHAIN ---
                         val mediaMetadata = mediaMetadataProvider()
-                        var duration = withContext(Dispatchers.Main) {
-                            durationProvider()
-                        }
+                        val artist = mediaMetadata.artist?.toString() ?: ""
+                        val title = mediaMetadata.title?.toString() ?: ""
+                        val album = mediaMetadata.albumTitle?.toString()
+                        var duration = withContext(Dispatchers.Main) { durationProvider() }
 
                         while (duration == C.TIME_UNSET) {
                             delay(100)
-                            duration = withContext(Dispatchers.Main) {
-                                durationProvider()
+                            duration = withContext(Dispatchers.Main) { durationProvider() }
+                        }
+                        val songDurationSec = duration / 1000
+
+                        var fetchedSynced: String? = null
+                        var fetchedFixed: String? = null
+
+                        // 1. BetterLyrics (Video ID match)
+                        BetterLyrics.fetchLyrics(mediaId).onSuccess {
+                            if (!it.isNullOrBlank()) fetchedSynced = it
+                        }
+
+                        // 2. LRCLIB Get (Metadata match)
+                        if (fetchedSynced == null) {
+                            com.github.soundpod.utils.LrcLib.fetchLyrics(artist, title, album, songDurationSec).onSuccess { response ->
+                                val lrcDuration = response?.duration?.toLong() ?: 0L
+                                if (response?.syncedLyrics != null && (lrcDuration == 0L || Math.abs(lrcDuration - songDurationSec) <= 3)) {
+                                    fetchedSynced = response.syncedLyrics
+                                    fetchedFixed = response.plainLyrics
+                                }
                             }
                         }
 
-                        // Try BetterLyrics first, then KuGou
-                        BetterLyrics.fetchLyrics(mediaId).onSuccess { syncedLyrics ->
-                            if (syncedLyrics != null) {
-                                Database.upsert(
-                                    com.github.soundpod.models.Lyrics(
-                                        songId = mediaId,
-                                        fixed = dbLyrics?.fixed,
-                                        synced = syncedLyrics
-                                    )
-                                )
-                                return@onSuccess
+                        // 3. NetEase (Search match)
+                        if (fetchedSynced == null) {
+                            com.github.soundpod.utils.NetEase.fetchLyrics(artist, title, duration).onSuccess {
+                                if (!it.isNullOrBlank()) fetchedSynced = it
                             }
-                            
-                            // Fallback to KuGou
-                            KuGou.lyrics(
-                                artist = mediaMetadata.artist?.toString() ?: "",
-                                title = mediaMetadata.title?.toString() ?: "",
-                                duration = duration / 1000
-                            )?.onSuccess { kuGouLyrics ->
-                                Database.upsert(
-                                    com.github.soundpod.models.Lyrics(
-                                        songId = mediaId,
-                                        fixed = dbLyrics?.fixed,
-                                        synced = kuGouLyrics?.value ?: ""
-                                    )
-                                )
-                            }?.onFailure {
-                                isError = true
+                        }
+
+                        // 4. LRCLIB Search (Keyword match)
+                        if (fetchedSynced == null) {
+                            com.github.soundpod.utils.LrcLib.searchLyrics("$artist $title").onSuccess { results ->
+                                val best = results.find { Math.abs((it.duration ?: 0.0).toLong() - songDurationSec) <= 3 }
+                                if (best?.syncedLyrics != null) {
+                                    fetchedSynced = best.syncedLyrics
+                                    fetchedFixed = best.plainLyrics
+                                }
                             }
-                        }.onFailure {
-                            // Fallback to KuGou on error
-                            KuGou.lyrics(
-                                artist = mediaMetadata.artist?.toString() ?: "",
-                                title = mediaMetadata.title?.toString() ?: "",
-                                duration = duration / 1000
-                            )?.onSuccess { kuGouLyrics ->
-                                Database.upsert(
-                                    com.github.soundpod.models.Lyrics(
-                                        songId = mediaId,
-                                        fixed = dbLyrics?.fixed,
-                                        synced = kuGouLyrics?.value ?: ""
-                                    )
-                                )
-                            }?.onFailure {
-                                isError = true
+                        }
+
+                        // 5. KuGou (Legacy fallback)
+                        if (fetchedSynced == null) {
+                            KuGou.lyrics(artist, title, songDurationSec)?.onSuccess {
+                                if (!it?.value.isNullOrBlank()) fetchedSynced = it?.value
                             }
+                        }
+
+                        if (fetchedSynced != null) {
+                            Database.upsert(
+                                com.github.soundpod.models.Lyrics(
+                                    songId = mediaId,
+                                    fixed = fetchedFixed ?: dbLyrics?.fixed,
+                                    synced = fetchedSynced
+                                )
+                            )
+                        } else {
+                            isError = true
                         }
                     } else if (!isShowingSynchronizedLyrics && !isFloatingLyricsEnabled && dbLyrics?.fixed == null) {
                         Innertube.lyrics(videoId = mediaId)?.onSuccess { fixedLyrics ->
@@ -288,13 +297,14 @@ fun Lyrics(
                         ?: return@AnimatedVisibility
 
                     val synchronizedLyrics = remember(text) {
-                        SynchronizedLyrics(KuGou.Lyrics(text).sentences) {
-                            player.currentPosition + 50
+                        val sentences = com.github.soundpod.utils.LrcParser.parse(text)
+                        SynchronizedLyrics(sentences) {
+                            player.currentPosition
                         }
                     }
 
                     val lazyListState = rememberLazyListState(
-                        synchronizedLyrics.index,
+                        if (synchronizedLyrics.index == -1) 0 else synchronizedLyrics.index,
                         with(density) { size.roundToPx() } / 6)
 
                     LaunchedEffect(synchronizedLyrics) {
@@ -303,10 +313,14 @@ fun Lyrics(
                         while (isActive) {
                             delay(50)
                             if (synchronizedLyrics.update()) {
-                                lazyListState.animateScrollToItem(
-                                    synchronizedLyrics.index,
-                                    center
-                                )
+                                if (synchronizedLyrics.index != -1) {
+                                    lazyListState.animateScrollToItem(
+                                        synchronizedLyrics.index,
+                                        center
+                                    )
+                                } else {
+                                    lazyListState.animateScrollToItem(0, 0)
+                                }
                             }
                         }
                     }

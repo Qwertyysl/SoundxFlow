@@ -112,39 +112,70 @@ fun NewPlayer(
     LaunchedEffect(mediaItem.mediaId, isFloatingLyricsEnabled) {
         withContext(Dispatchers.IO) {
             Database.lyrics(mediaItem.mediaId).collect { dbLyrics: Lyrics? ->
-                // Fetch if synced lyrics are missing and either floating lyrics or full lyrics view is expected
                 if (dbLyrics?.synced == null) {
+                    val artist = mediaItem.mediaMetadata.artist?.toString() ?: ""
+                    val title = mediaItem.mediaMetadata.title?.toString() ?: ""
+                    val album = mediaItem.mediaMetadata.albumTitle?.toString()
                     var duration = withContext(Dispatchers.Main) { player.duration }
+
                     while (duration == C.TIME_UNSET) {
                         delay(100)
                         duration = withContext(Dispatchers.Main) { player.duration }
                     }
+                    val songDurationSec = duration / 1000
 
-                    com.github.soundpod.utils.BetterLyrics.fetchLyrics(mediaItem.mediaId).onSuccess { syncedLyrics: String? ->
-                        if (syncedLyrics != null) {
-                            Database.upsert(
-                                Lyrics(
-                                    songId = mediaItem.mediaId,
-                                    fixed = dbLyrics?.fixed,
-                                    synced = syncedLyrics
-                                )
-                            )
-                        } else {
-                            // Fallback to KuGou
-                            com.github.kugou.KuGou.lyrics(
-                                artist = mediaItem.mediaMetadata.artist?.toString() ?: "",
-                                title = mediaItem.mediaMetadata.title?.toString() ?: "",
-                                duration = duration / 1000
-                            )?.onSuccess { kuGouLyrics ->
-                                Database.upsert(
-                                    Lyrics(
-                                        songId = mediaItem.mediaId,
-                                        fixed = dbLyrics?.fixed,
-                                        synced = kuGouLyrics?.value ?: ""
-                                    )
-                                )
+                    var fetchedSynced: String? = null
+                    var fetchedFixed: String? = null
+
+                    // 1. BetterLyrics
+                    com.github.soundpod.utils.BetterLyrics.fetchLyrics(mediaItem.mediaId).onSuccess {
+                        if (!it.isNullOrBlank()) fetchedSynced = it
+                    }
+
+                    // 2. LRCLIB Get
+                    if (fetchedSynced == null) {
+                        com.github.soundpod.utils.LrcLib.fetchLyrics(artist, title, album, songDurationSec).onSuccess { response ->
+                            val lrcDuration = response?.duration?.toLong() ?: 0L
+                            if (response?.syncedLyrics != null && (lrcDuration == 0L || Math.abs(lrcDuration - songDurationSec) <= 3)) {
+                                fetchedSynced = response.syncedLyrics
+                                fetchedFixed = response.plainLyrics
                             }
                         }
+                    }
+
+                    // 3. NetEase
+                    if (fetchedSynced == null) {
+                        com.github.soundpod.utils.NetEase.fetchLyrics(artist, title, duration).onSuccess {
+                            if (!it.isNullOrBlank()) fetchedSynced = it
+                        }
+                    }
+
+                    // 4. LRCLIB Search
+                    if (fetchedSynced == null) {
+                        com.github.soundpod.utils.LrcLib.searchLyrics("$artist $title").onSuccess { results ->
+                            val best = results.find { Math.abs((it.duration ?: 0.0).toLong() - songDurationSec) <= 3 }
+                            if (best?.syncedLyrics != null) {
+                                fetchedSynced = best.syncedLyrics
+                                fetchedFixed = best.plainLyrics
+                            }
+                        }
+                    }
+
+                    // 5. KuGou
+                    if (fetchedSynced == null) {
+                        com.github.kugou.KuGou.lyrics(artist, title, songDurationSec)?.onSuccess {
+                            if (!it?.value.isNullOrBlank()) fetchedSynced = it?.value
+                        }
+                    }
+
+                    if (fetchedSynced != null) {
+                        Database.upsert(
+                            Lyrics(
+                                songId = mediaItem.mediaId,
+                                fixed = fetchedFixed ?: dbLyrics?.fixed,
+                                synced = fetchedSynced
+                            )
+                        )
                     }
                 }
 
@@ -297,8 +328,6 @@ fun NewPlayer(
                                 PlayerMiddleControl(
                                     showPlaylist = showPlaylist,
                                     onTogglePlaylist = { showPlaylist = it },
-                                    showLyrics = showLyrics,
-                                    onToggleLyrics = { showLyrics = it },
                                     mediaId = mediaItem.mediaId
                                 )
                             }

@@ -43,12 +43,13 @@ fun FloatingLyrics(
     
     val sentences = remember(syncedLyricsText) {
         if (syncedLyricsText.isNullOrBlank()) emptyList()
-        else KuGou.Lyrics(syncedLyricsText).sentences
+        else com.github.soundpod.utils.LrcParser.parse(syncedLyricsText)
     }
     
     if (sentences.isEmpty()) return
     
-    val currentSentenceIndex = sentences.indexOfLast { it.first <= currentPosition + 100 }.coerceAtLeast(0)
+    val currentSentenceIndex = sentences.indexOfLast { it.first <= currentPosition }
+    if (currentSentenceIndex == -1) return
     val currentSentence = sentences.getOrNull(currentSentenceIndex)?.second ?: ""
     
     if (currentSentence.isBlank()) return

@@ -250,8 +250,6 @@ fun MiniPlayerControl(
 fun PlayerMiddleControl(
     showPlaylist: Boolean,
     onTogglePlaylist: (Boolean) -> Unit,
-    showLyrics: Boolean,
-    onToggleLyrics: (Boolean) -> Unit,
     mediaId: String
 ) {
     val binder = LocalPlayerServiceBinder.current
@@ -275,17 +273,6 @@ fun PlayerMiddleControl(
                 painter = painterResource(id = R.drawable.playlist),
                 contentDescription = "Playlist",
                 tint = if (showPlaylist) colorPalette.accent else colorPalette.iconColor,
-                modifier = Modifier.size(24.dp)
-            )
-        }
-
-        AnimatedIconButton(
-            onClick = { onToggleLyrics(!showLyrics) }
-        ) {
-            Icon(
-                painter = painterResource(id = R.drawable.mic),
-                contentDescription = "Lyrics",
-                tint = if (showLyrics) colorPalette.accent else colorPalette.iconColor,
                 modifier = Modifier.size(24.dp)
             )
         }

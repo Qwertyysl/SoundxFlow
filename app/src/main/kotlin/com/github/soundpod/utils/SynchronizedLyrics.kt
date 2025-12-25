@@ -10,12 +10,21 @@ class SynchronizedLyrics(val sentences: List<Pair<Long, String>>, private val po
 
     private val currentIndex: Int
         get() {
-            var index = -1
-            for (item in sentences) {
-                if (item.first >= positionProvider()) break
-                index++
+            val position = positionProvider()
+            var low = 0
+            var high = sentences.size - 1
+            var result = -1
+
+            while (low <= high) {
+                val mid = (low + high) / 2
+                if (sentences[mid].first <= position) {
+                    result = mid
+                    low = mid + 1
+                } else {
+                    high = mid - 1
+                }
             }
-            return if (index == -1) 0 else index
+            return result
         }
 
     fun update(): Boolean {
