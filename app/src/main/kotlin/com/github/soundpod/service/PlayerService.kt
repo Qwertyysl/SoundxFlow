@@ -103,6 +103,8 @@ import com.github.soundpod.utils.shouldBePlaying
 import com.github.soundpod.utils.skipSilenceKey
 import com.github.soundpod.utils.timer
 import com.github.soundpod.utils.trackLoopEnabledKey
+import com.github.soundpod.utils.volumeBoosterEnabledKey
+import com.github.soundpod.utils.volumeBoosterGainKey
 import com.github.soundpod.utils.volumeNormalizationKey
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -397,7 +399,7 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
         mediaItemState.update { mediaItem }
 
         maybeRecoverPlaybackError()
-        maybeNormalizeVolume()
+        updateLoudnessEnhancer()
         maybeProcessRadio()
 
         if (mediaItem == null) {
@@ -517,8 +519,12 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
         }
     }
 
-    private fun maybeNormalizeVolume() {
-        if (!preferences.getBoolean(volumeNormalizationKey, false)) {
+    private fun updateLoudnessEnhancer() {
+        val normalizationEnabled = preferences.getBoolean(volumeNormalizationKey, false)
+        val boosterEnabled = preferences.getBoolean(volumeBoosterEnabledKey, false)
+        val boosterGain = if (boosterEnabled) preferences.getInt(volumeBoosterGainKey, 0) else 0
+
+        if (!normalizationEnabled && !boosterEnabled) {
             loudnessEnhancer?.enabled = false
             loudnessEnhancer?.release()
             loudnessEnhancer = null
@@ -528,15 +534,28 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
         }
 
         if (loudnessEnhancer == null) {
-            loudnessEnhancer = LoudnessEnhancer(player.audioSessionId)
+            loudnessEnhancer = try {
+                LoudnessEnhancer(player.audioSessionId)
+            } catch (e: Exception) {
+                null
+            }
         }
 
         player.currentMediaItem?.mediaId?.let { songId ->
             volumeNormalizationJob?.cancel()
             volumeNormalizationJob = coroutineScope.launch(Dispatchers.Main) {
-                Database.loudnessDb(songId).cancellable().collectLatest { loudnessDb ->
+                if (normalizationEnabled) {
+                    Database.loudnessDb(songId).cancellable().collectLatest { loudnessDb ->
+                        try {
+                            val normalizationGain = -((loudnessDb ?: 0f) * 100).toInt() + 500
+                            loudnessEnhancer?.setTargetGain(normalizationGain + boosterGain)
+                            loudnessEnhancer?.enabled = true
+                        } catch (_: Exception) {
+                        }
+                    }
+                } else {
                     try {
-                        loudnessEnhancer?.setTargetGain(-((loudnessDb ?: 0f) * 100).toInt() + 500)
+                        loudnessEnhancer?.setTargetGain(boosterGain)
                         loudnessEnhancer?.enabled = true
                     } catch (_: Exception) {
                     }
@@ -694,7 +713,7 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
                     sharedPreferences.getBoolean(key, isPersistentQueueEnabled)
             }
 
-            volumeNormalizationKey -> maybeNormalizeVolume()
+            volumeNormalizationKey, volumeBoosterEnabledKey, volumeBoosterGainKey -> updateLoudnessEnhancer()
 
             resumePlaybackWhenDeviceConnectedKey -> maybeResumePlaybackWhenDeviceConnected()
 

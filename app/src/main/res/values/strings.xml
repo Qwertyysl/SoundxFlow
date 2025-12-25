@@ -37,6 +37,8 @@
     <string name="skip_silence_description">Skip silent parts during playback</string>
     <string name="loudness_normalization">Normalize Volume</string>
     <string name="loudness_normalization_description">Keep consistent loudness across songs</string>
+    <string name="volume_booster">Volume Booster</string>
+    <string name="volume_booster_description">Boost volume up to 200% (Caution: may distort audio or damage old speakers)</string>
     <string name="equalizer">Equalizer</string>
     <string name="equalizer_description">Interact with the system equalizer</string>
     <string name="show_song_cover">Show song cover</string>

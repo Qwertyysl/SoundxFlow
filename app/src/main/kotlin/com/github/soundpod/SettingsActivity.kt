@@ -65,7 +65,7 @@ class SettingsActivity : ComponentActivity() {
             AppTheme(
                 darkTheme = darkTheme,
                 usePureBlack = false,
-                useMaterialNeutral = false,
+                useMaterialNeutral = false
             ) {
                 CompositionLocalProvider(value = LocalPlayerServiceBinder provides binder) {
                     when (screenId) {

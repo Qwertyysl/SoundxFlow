@@ -34,6 +34,8 @@ import com.github.soundpod.utils.persistentQueueKey
 import com.github.soundpod.utils.rememberPreference
 import com.github.soundpod.utils.resumePlaybackWhenDeviceConnectedKey
 import com.github.soundpod.utils.skipSilenceKey
+import com.github.soundpod.utils.volumeBoosterEnabledKey
+import com.github.soundpod.utils.volumeBoosterGainKey
 import com.github.soundpod.utils.volumeNormalizationKey
 import java.util.Locale
 
@@ -50,6 +52,8 @@ fun PlayerSettings(
     var playSpeed by remember { mutableFloatStateOf(1.0f) }
     var crossfade by remember { mutableFloatStateOf(5f) }
     var volumeNormalization by rememberPreference(volumeNormalizationKey, false)
+    var volumeBoosterEnabled by rememberPreference(volumeBoosterEnabledKey, false)
+    var volumeBoosterGain by rememberPreference(volumeBoosterGainKey, 0)
     var resumePlaybackWhenDeviceConnected by rememberPreference(
         resumePlaybackWhenDeviceConnectedKey,
         false
@@ -167,6 +171,27 @@ fun PlayerSettings(
                         volumeNormalization = it
                     }
                 )
+
+                SwitchSetting(
+                    icon = IconSource.Vector(Icons.AutoMirrored.Filled.VolumeUp),
+                    title = stringResource(id = R.string.volume_booster),
+                    description = stringResource(id = R.string.volume_booster_description),
+                    switchState = volumeBoosterEnabled,
+                    onSwitchChange = {
+                        volumeBoosterEnabled = it
+                    }
+                )
+
+                if (volumeBoosterEnabled) {
+                    SliderSettingsItem(
+                        label = "Boost Level",
+                        value = volumeBoosterGain.toFloat(),
+                        onValueChange = { volumeBoosterGain = it.toInt() },
+                        valueRange = 0f..2000f,
+                        valueLabel = { "${100 + (it / 20).toInt()}%" },
+                        hapticUseIntegerStep = true
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))

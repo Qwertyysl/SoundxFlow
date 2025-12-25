@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.Icon
@@ -66,7 +67,6 @@ import com.github.innertube.models.NavigationEndpoint
 import com.github.soundpod.Database
 import com.github.soundpod.LocalPlayerServiceBinder
 import com.github.soundpod.R
-import com.github.soundpod.enums.ProgressBar
 import com.github.soundpod.models.LocalMenuState
 import com.github.soundpod.models.Song
 import com.github.soundpod.query
@@ -82,6 +82,7 @@ import com.github.soundpod.utils.seamlessPlay
 import com.github.soundpod.utils.shuffleQueue
 import com.github.soundpod.utils.toast
 import com.github.soundpod.utils.trackLoopEnabledKey
+import com.github.soundpod.utils.volumeBoosterEnabledKey
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOf
 
@@ -442,9 +443,12 @@ fun PlayerTopControl(
     val mediaItem = nullableMediaItem ?: return
 
     var isShowingSleepTimerDialog by rememberSaveable { mutableStateOf(false) }
+    var isShowingVolumeBoosterDialog by rememberSaveable { mutableStateOf(false) }
     val sleepTimerMillisLeft by (binder.sleepTimerMillisLeft
         ?: flowOf(null))
         .collectAsState(initial = null)
+
+    val volumeBoosterEnabled by rememberPreference(volumeBoosterEnabledKey, false)
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -496,6 +500,17 @@ fun PlayerTopControl(
                     modifier = Modifier.size(22.dp)
                 )
             }
+        }
+
+        IconButton(
+            onClick = { isShowingVolumeBoosterDialog = true }
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                tint = if (volumeBoosterEnabled) colorPalette.accent else colorPalette.iconColor,
+                contentDescription = null,
+                modifier = Modifier.size(22.dp)
+            )
         }
 
         IconButton(
@@ -554,6 +569,11 @@ fun PlayerTopControl(
             onDismiss = { isShowingSleepTimerDialog = false }
         )
     }
+    if (isShowingVolumeBoosterDialog) {
+        VolumeBooster(
+            onDismiss = { isShowingVolumeBoosterDialog = false }
+        )
+    }
 }
 
 fun formatTime(ms: Long): String {
@@ -568,30 +588,16 @@ fun formatTime(ms: Long): String {
 fun PlayerSeekBar(
     mediaId: String,
     position: Long,
-    duration: Long,
-    progressBarStyle: ProgressBar
+    duration: Long
 ) {
     val binder = LocalPlayerServiceBinder.current
     binder?.player ?: return
 
-    when (progressBarStyle) {
-
-        ProgressBar.Default -> {
-            PlayerSeekBarDefault(
-                mediaId = mediaId,
-                position = position,
-                duration = duration
-            )
-        }
-
-        ProgressBar.Animated -> {
-            PlayerSeekBarAnimated(
-                mediaId = mediaId,
-                position = position,
-                duration = duration
-            )
-        }
-    }
+    PlayerSeekBarDefault(
+        mediaId = mediaId,
+        position = position,
+        duration = duration
+    )
 }
 
 @Composable
@@ -650,58 +656,6 @@ private fun PlayerSeekBarDefault(
                     color = MaterialTheme.colorScheme.onSurface,
                     style = MaterialTheme.typography.labelMedium,
                     maxLines = 1
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun PlayerSeekBarAnimated(
-    mediaId: String,
-    position: Long,
-    duration: Long
-) {
-    val binder = LocalPlayerServiceBinder.current
-    binder?.player ?: return
-
-    var scrubbingPosition by remember(mediaId) { mutableStateOf<Float?>(null) }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 18.dp)
-    ) {
-
-        AnimatedSeekbar(
-            value = scrubbingPosition ?: position.toFloat(),
-            onValueChange = { scrubbingPosition = it },
-            onValueChangeFinished = {
-                scrubbingPosition?.let { binder.player.seekTo(it.toLong()) }
-                scrubbingPosition = null
-            },
-            valueRange = 0f..duration.toFloat(),
-            isPlaying = binder.player.isPlaying
-        )
-
-        Spacer(Modifier.height(8.dp))
-
-        Row(
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(
-                text = formatAsDuration((scrubbingPosition ?: position.toFloat()).toLong()),
-                color = MaterialTheme.colorScheme.onSurface,
-                style = MaterialTheme.typography.labelMedium
-            )
-
-            if (duration != C.TIME_UNSET) {
-                Text(
-                    text = formatAsDuration(duration),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    style = MaterialTheme.typography.labelMedium
                 )
             }
         }

@@ -5,8 +5,13 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -71,8 +76,10 @@ fun PlayerScaffold(
         onDispose { player?.removeListener(listener) }
     }
 
+    val navigationBarsPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+
     val targetPeekHeight = if (showPlayer) {
-        40.dp + 20.dp + scaffoldPadding.calculateBottomPadding()
+        72.dp + navigationBarsPadding
     } else {
         0.dp
     }
@@ -95,10 +102,7 @@ fun PlayerScaffold(
             sheetShape = MaterialTheme.shapes.extraLarge,
             sheetContainerColor = MaterialTheme.colorScheme.background,
             sheetContent = {
-
-                // 4. Use the Smart Background Wrapper
                 PlayerBackground(thumbnailUrl = currentArtworkUrl) {
-
                     AnimatedContent(
                         targetState = sheetState.targetValue,
                         label = "player",
@@ -109,9 +113,6 @@ fun PlayerScaffold(
                         Box(
                             modifier = Modifier.fillMaxHeight()
                         ) {
-                            // Note: removed the hardcoded ThemedLottieBackground here
-                            // because it's now handled inside PlayerBackground based on settings.
-
                             if (value == SheetValue.Expanded) {
                                 NewPlayer(
                                     onGoToAlbum = { browseId ->
@@ -125,6 +126,9 @@ fun PlayerScaffold(
                                         navController.navigate(
                                             route = Routes.Artist(id = browseId)
                                         )
+                                    },
+                                    onMinimize = {
+                                        scope.launch { sheetState.partialExpand() }
                                     }
                                 )
                             } else {
@@ -148,7 +152,7 @@ fun PlayerScaffold(
             sheetDragHandle = null
         ) {
             val targetPadding = if (showPlayer && sheetState.currentValue != SheetValue.Hidden) {
-                scaffoldPadding.calculateBottomPadding() + 76.dp + 16.dp
+                targetPeekHeight + 8.dp
             } else {
                 scaffoldPadding.calculateBottomPadding()
             }

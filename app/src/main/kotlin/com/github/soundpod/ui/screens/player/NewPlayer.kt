@@ -6,14 +6,16 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.BottomAppBarDefaults.windowInsets
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -31,12 +33,10 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import com.github.soundpod.Database
 import com.github.soundpod.LocalPlayerServiceBinder
-import com.github.soundpod.enums.ProgressBar
 import com.github.soundpod.ui.styling.Dimensions
 import com.github.soundpod.utils.DisposableListener
 import com.github.soundpod.utils.isLandscape
 import com.github.soundpod.utils.positionAndDurationState
-import com.github.soundpod.utils.progressBarStyle
 import com.github.soundpod.utils.rememberPreference
 import com.github.soundpod.utils.shouldBePlaying
 import kotlinx.coroutines.Dispatchers
@@ -51,7 +51,8 @@ import kotlinx.coroutines.withContext
 @Composable
 fun NewPlayer(
     onGoToAlbum: (String) -> Unit,
-    onGoToArtist: (String) -> Unit
+    onGoToArtist: (String) -> Unit,
+    onMinimize: () -> Unit
 ) {
     val binder = LocalPlayerServiceBinder.current
     binder?.player ?: return
@@ -112,10 +113,6 @@ fun NewPlayer(
     var fullScreenLyrics by remember { mutableStateOf(false) }
     var isShowingStatsForNerds by rememberSaveable { mutableStateOf(false) }
 
-    val progressBarStyleState = rememberPreference(progressBarStyle, ProgressBar.Default)
-    val progressBarStyle = progressBarStyleState.value
-
-
     if (isLandscape) {
         //todo
     } else {
@@ -124,11 +121,12 @@ fun NewPlayer(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(
-                    windowInsets
+                    WindowInsets.systemBars
                         .only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
                         .asPaddingValues()
                 )
-                .padding(bottom = 60.dp)
+                .navigationBarsPadding()
+                .padding(bottom = 8.dp)
         ) {
 
             Spacer(modifier = Modifier.height(Dimensions.spacer))
@@ -136,7 +134,7 @@ fun NewPlayer(
             PlayerTopControl(
                 onGoToAlbum = onGoToAlbum,
                 onGoToArtist = onGoToArtist,
-                onBack = {},
+                onBack = onMinimize,
             )
 
             Box(Modifier.weight(1f)) {
@@ -196,8 +194,7 @@ fun NewPlayer(
             PlayerSeekBar(
                 mediaId = mediaItem.mediaId,
                 position = positionAndDuration.first,
-                duration = positionAndDuration.second,
-                progressBarStyle = progressBarStyle
+                duration = positionAndDuration.second
             )
 
             Spacer(modifier = Modifier.height(Dimensions.spacer))

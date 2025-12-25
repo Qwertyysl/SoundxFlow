@@ -105,7 +105,9 @@ fun DynamicBackground(
 
         } else {
             // Mini Player (Solid)
-            Box(Modifier.fillMaxSize().background(animatedPrimary).background(colorPalette.background3.copy(0.5f)))
+            Box(Modifier.fillMaxSize()
+                .background(animatedPrimary)
+                .background(colorPalette.background3.copy(0.5f)))
         }
         content()
     }

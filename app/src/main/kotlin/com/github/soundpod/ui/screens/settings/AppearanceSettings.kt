@@ -21,13 +21,11 @@ import com.github.core.ui.LocalAppearance
 import com.github.soundpod.R
 import com.github.soundpod.enums.AccentColorSource
 import com.github.soundpod.enums.AppThemeColor
-import com.github.soundpod.enums.ProgressBar
 import com.github.soundpod.ui.common.IconSource
 import com.github.soundpod.ui.components.SettingsCard
 import com.github.soundpod.ui.components.SettingsScreenLayout
 import com.github.soundpod.utils.accentColorSource
 import com.github.soundpod.utils.appTheme
-import com.github.soundpod.utils.progressBarStyle
 import com.github.soundpod.utils.rememberPreference
 
 @Suppress("AssignedValueIsNeverRead")
@@ -41,7 +39,6 @@ fun AppearanceSettings(
     val context = LocalContext.current
     var appThemeColor by rememberPreference(appTheme, AppThemeColor.System)
     var accentColorSource by rememberPreference(accentColorSource, AccentColorSource.Default )
-    var progressBarStyle by rememberPreference(progressBarStyle, ProgressBar.Default )
 
     BackHandler(onBack = onBackClick)
 
@@ -76,28 +73,6 @@ fun AppearanceSettings(
                     selectedValue = accentColorSource,
                     onValueSelected = { accentColorSource = it },
                     icon = IconSource.Icon( painterResource(id = R.drawable.color_mode)),
-                    valueText = { context.getString(it.resourceId) }
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = "Animations",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.ExtraBold,
-                color = colorPalette.text.copy(alpha = 0.7f)
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            SettingsCard{
-
-                EnumValueSelectorSettingsEntry(
-                    title = stringResource(id = R.string.progress_bar_style),
-                    selectedValue = progressBarStyle,
-                    onValueSelected = { progressBarStyle = it },
-                    icon = IconSource.Icon( painterResource(id = R.drawable.wave)),
                     valueText = { context.getString(it.resourceId) }
                 )
 

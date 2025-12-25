@@ -59,6 +59,7 @@ import com.github.soundpod.ui.github.UpdateCheckWorker
 import com.github.soundpod.ui.navigation.MainNavigation
 import com.github.soundpod.ui.navigation.Routes
 import com.github.soundpod.ui.navigation.SettingsDestinations
+import com.github.soundpod.ui.appearance.PlayerBackground
 import com.github.soundpod.ui.screens.player.PlayerScaffold
 import com.github.soundpod.ui.styling.AppTheme
 import com.github.soundpod.utils.appTheme
@@ -144,7 +145,7 @@ class MainActivity : ComponentActivity() {
             AppTheme(
                 darkTheme = darkTheme,
                 usePureBlack = false,
-                useMaterialNeutral = false,
+                useMaterialNeutral = false
             ) {
                 Box(
                     modifier = Modifier.fillMaxSize()
