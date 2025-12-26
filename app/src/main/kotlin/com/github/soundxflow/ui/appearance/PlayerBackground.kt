@@ -7,8 +7,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.github.soundxflow.utils.rememberPreference
 
@@ -29,6 +31,7 @@ object BackgroundStyles {
     const val ABSTRACT_5 = 5
     const val ABSTRACT_6 = 6
     const val MESH = 10
+    const val GLASS = 11
     const val CUSTOM_IMAGE = 99
 }
 
@@ -74,6 +77,18 @@ fun PlayerBackground(
             }
             BackgroundStyles.MESH -> {
                 MeshBackground(thumbnailUrl = thumbnailUrl)
+            }
+            BackgroundStyles.GLASS -> {
+                Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+                    if (thumbnailUrl != null) {
+                        AsyncImage(
+                            model = thumbnailUrl,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize().alpha(0.4f).blur(radius = 50.dp)
+                        )
+                    }
+                }
             }
             else -> {
                 ThemedLottieBackground(

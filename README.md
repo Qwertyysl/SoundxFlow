@@ -27,14 +27,14 @@ An Android application for streaming music from YouTube Music.
 
 ### 🗒️ New features
 
-- Material You redesign
-- Multilingual support
-- Quick picks selection customization
-- Swipe to enqueue and delete songs
-- **Azan Reminder**: Automated prayer time alerts using JAKIM API with location-based scheduling and auto-pause/resume playback control.
-- **Lockscreen Lyrics**: Synchronized lyrics displayed directly in the media notification for karaoke on the go.
-- **Azan Homescreen Widget**: View full-day prayer times and current date directly from the app's homepage.
-- **Enhanced Player Information**: Release year visibility for albums and songs in the main player view.
+- **Modern UI Redesign**: A fresh, sleek card-based aesthetic with fluid animations and parallel support for the Classic design.
+- **Advanced Player Personalization**: Choose from multiple background styles including **Mesh Gradient**, **Dynamic Fusion**, and high-quality **Abstract Lottie** animations.
+- **Floating Lyrics**: Real-time synchronized lyrics overlay directly on the player artwork.
+- **Azan Reminder Pro**: Integrated playback control that pauses music for Azan and resumes automatically. Includes a one-tap "Stop" control in notifications.
+- **Enhanced Player Controls**: Quick-access shortcuts for System Equalizer and Volume Booster directly from the player interface.
+- **Lockscreen Lyrics**: Synchronized lyrics displayed directly in the media notification.
+- **Azan Homescreen Widget**: Full-day prayer times from JAKIM API and a live clock on the homepage.
+- **Multilingual support** & Swipe-to-action gestures.
 
 ## 🌐 Available languages
 

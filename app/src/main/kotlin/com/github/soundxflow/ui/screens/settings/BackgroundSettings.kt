@@ -168,8 +168,68 @@ fun BackgroundSettings(onBackClick: () -> Unit) {
                 BackgroundPreviewCard("Forest Mist", "lottie/bg6.lottie", currentStyle == BackgroundStyles.ABSTRACT_6) { context.preferences.edit { putInt(PLAYER_BACKGROUND_STYLE_KEY, BackgroundStyles.ABSTRACT_6) } }
                 MeshOptionCard("Mesh Gradient", currentStyle == BackgroundStyles.MESH) { context.preferences.edit { putInt(PLAYER_BACKGROUND_STYLE_KEY, BackgroundStyles.MESH) } }
             }
+            TwoColumnRow {
+                GlassOptionCard("Glassmorphism", currentStyle == BackgroundStyles.GLASS) { context.preferences.edit { putInt(PLAYER_BACKGROUND_STYLE_KEY, BackgroundStyles.GLASS) } }
+                Spacer(modifier = Modifier.weight(1f))
+            }
         }
         Spacer(modifier = Modifier.height(48.dp))
+    }
+}
+
+@Composable
+fun RowScope.GlassOptionCard(
+    title: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    val (colorPalette) = LocalAppearance.current
+
+    Column(
+        modifier = Modifier
+            .weight(1f)
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(0.6f)
+                .clip(RoundedCornerShape(16.dp))
+                .background(colorPalette.background3)
+                .border(
+                    width = if (selected) 2.dp else 0.dp,
+                    color = if (selected) colorPalette.accent else Color.Transparent,
+                    shape = RoundedCornerShape(16.dp)
+                )
+        ) {
+            // Blurred preview
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Gray.copy(alpha = 0.3f))
+            )
+
+            if (selected) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .size(40.dp)
+                        .background(colorPalette.accent, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = null,
+                        tint = colorPalette.onAccent
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(text = title, style = MaterialTheme.typography.bodyMedium, color = if (selected) colorPalette.accent else colorPalette.text, maxLines = 1)
     }
 }
 
