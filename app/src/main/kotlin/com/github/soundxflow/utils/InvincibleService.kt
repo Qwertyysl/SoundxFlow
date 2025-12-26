@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Binder
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import androidx.core.content.ContextCompat
@@ -26,6 +27,10 @@ abstract class InvincibleService : Service() {
 
     private val isAllowedToStartForegroundServices: Boolean
         get() = !isAtLeastAndroid12 || isIgnoringBatteryOptimizations
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        return START_STICKY
+    }
 
     override fun onBind(intent: Intent?): Binder? {
         invincibility?.stop()
@@ -107,8 +112,15 @@ abstract class InvincibleService : Service() {
             if (shouldBeInvincible() && isAllowedToStartForegroundServices) {
                 notification()?.let { notification ->
                     startForeground(notificationId, notification)
-                    @Suppress("DEPRECATION")
-                    stopForeground(false)
+                    
+                    if (isAtLeastAndroid13) {
+                        // On Android 13+, we can stay in foreground and the notification is still dismissible
+                        // if it's a media notification and not set to ongoing.
+                    } else {
+                        @Suppress("DEPRECATION")
+                        stopForeground(false)
+                    }
+                    
                     handler.postDelayed(this, intervalMs)
                 }
             }

@@ -1,10 +1,12 @@
 package com.github.soundxflow.utils
 
 import android.app.Activity
+import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.PowerManager
 import android.widget.Toast
 import androidx.core.content.getSystemService
@@ -33,6 +35,13 @@ inline fun <reified T : Activity> Context.activityPendingIntent(
 val Context.isIgnoringBatteryOptimizations: Boolean
     get() = if (isAtLeastAndroid6) {
         getSystemService<PowerManager>()?.isIgnoringBatteryOptimizations(packageName) ?: true
+    } else {
+        true
+    }
+
+val Context.canScheduleExactAlarms: Boolean
+    get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        getSystemService<AlarmManager>()?.canScheduleExactAlarms() ?: true
     } else {
         true
     }

@@ -3,6 +3,8 @@ package com.github.soundxflow.ui.screens.settings
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -33,6 +35,9 @@ fun AzanSettings(
     var azanAudioPath by rememberPreference(azanAudioPathKey, "")
 
     var showZoneDialog by remember { mutableStateOf(false) }
+    
+    val canScheduleExactAlarms = context.canScheduleExactAlarms
+    val isIgnoringBatteryOptimizations = context.isIgnoringBatteryOptimizations
 
     LaunchedEffect(azanEnabled, selectedZone) {
         if (azanEnabled) {
@@ -90,6 +95,38 @@ fun AzanSettings(
                     audioPickerLauncher.launch(arrayOf("audio/*"))
                 }
             )
+
+            if (azanEnabled) {
+                if (!canScheduleExactAlarms) {
+                    InfoCard(
+                        title = "Exact Alarm Permission Required",
+                        description = "To trigger Azan accurately, the app needs permission to schedule exact alarms.",
+                        buttonText = "Grant Permission",
+                        onClick = {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                context.startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+                                    data = Uri.parse("package:${context.packageName}")
+                                })
+                            }
+                        }
+                    )
+                }
+
+                if (!isIgnoringBatteryOptimizations) {
+                    InfoCard(
+                        title = "Battery Optimization",
+                        description = "The system may kill the background worker. Disable battery optimization for better reliability.",
+                        buttonText = "Disable",
+                        onClick = {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                                context.startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                                    data = Uri.parse("package:${context.packageName}")
+                                })
+                            }
+                        }
+                    )
+                }
+            }
         }
     }
 
@@ -119,6 +156,44 @@ fun AzanSettings(
                 }
             }
         )
+    }
+}
+
+@Composable
+fun InfoCard(
+    title: String,
+    description: String,
+    buttonText: String,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.error
+            )
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall
+            )
+            Button(
+                onClick = onClick,
+                modifier = Modifier.align(Alignment.End)
+            ) {
+                Text(buttonText)
+            }
+        }
     }
 }
 

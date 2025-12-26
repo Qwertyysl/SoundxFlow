@@ -22,6 +22,7 @@ import android.media.audiofx.LoudnessEnhancer
 import android.media.session.MediaSession
 import android.media.session.PlaybackState
 import android.net.Uri
+import android.net.wifi.WifiManager
 import android.os.Bundle
 import android.os.Handler
 import android.support.v4.media.session.MediaSessionCompat
@@ -183,6 +184,8 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
 
     private var radio: YouTubeRadio? = null
 
+    private var wifiLock: WifiManager.WifiLock? = null
+
     private lateinit var bitmapProvider: BitmapProvider
 
     private val coroutineScope = CoroutineScope(Dispatchers.IO) + Job()
@@ -237,6 +240,9 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
 
     override fun onCreate() {
         super.onCreate()
+
+        wifiLock = (getSystemService(Context.WIFI_SERVICE) as? WifiManager)
+            ?.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "PlayerService:WifiLock")
 
         bitmapProvider = BitmapProvider(
             context = applicationContext,
@@ -357,6 +363,8 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
         mediaSession.isActive = false
         mediaSession.release()
         cache.release()
+
+        if (wifiLock?.isHeld == true) wifiLock?.release()
 
         loudnessEnhancer?.release()
 
@@ -744,12 +752,20 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
                 startForeground(NOTIFICATION_ID, notification)
                 makeInvincible(false)
                 sendOpenEqualizerIntent()
+                wifiLock?.acquire()
             } else {
                 if (!player.shouldBePlaying) {
                     isNotificationStarted = false
-                    stopForeground(false)
+                    
+                    if (isInvincibilityEnabled && isAtLeastAndroid13) {
+                        // Stay in foreground
+                    } else {
+                        stopForeground(false)
+                    }
+                    
                     makeInvincible(true)
                     sendCloseEqualizerIntent()
+                    if (wifiLock?.isHeld == true) wifiLock?.release()
                 }
                 notificationManager?.notify(NOTIFICATION_ID, notification)
             }

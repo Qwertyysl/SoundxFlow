@@ -17,6 +17,7 @@ import com.github.soundxflow.utils.azanLocationKey
 import com.github.soundxflow.utils.azanReminderEnabledKey
 import com.github.soundxflow.utils.prayerTimesTodayKey
 import com.github.soundxflow.utils.rememberPreference
+import kotlinx.coroutines.delay
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.text.SimpleDateFormat
@@ -28,6 +29,19 @@ fun AzanWidget() {
     val azanEnabled by rememberPreference(azanReminderEnabledKey, false)
     val selectedZone by rememberPreference(azanLocationKey, "WLY01")
     var prayerTimesJson by rememberPreference(prayerTimesTodayKey, "")
+
+    var currentTimeMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            currentTimeMillis = System.currentTimeMillis()
+            delay(1000)
+        }
+    }
+
+    val timeString = remember(currentTimeMillis) {
+        SimpleDateFormat("hh:mm:ss a", Locale.getDefault()).format(Date(currentTimeMillis))
+    }
 
     if (!azanEnabled) return
 
@@ -46,7 +60,10 @@ fun AzanWidget() {
     LaunchedEffect(selectedZone, today) {
         // Force refresh from API when zone changes, date changes, or if data is missing
         val response = JakimApi.getPrayerTimes(selectedZone)
-        response?.prayerTime?.firstOrNull()?.let {
+        val todayStr = SimpleDateFormat("dd-MMM-yyyy", Locale.US).format(Date())
+        val todayPrayerTime = response?.prayerTime?.find { it.date == todayStr } ?: response?.prayerTime?.firstOrNull()
+        
+        todayPrayerTime?.let {
             prayerTimesJson = Json.encodeToString(it)
         }
     }
@@ -71,16 +88,25 @@ fun AzanWidget() {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "Prayer Times (${azanZones.find { it.code == selectedZone }?.code})",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold
-            )
+            Column {
+                Text(
+                    text = "Prayer Times (${azanZones.find { it.code == selectedZone }?.code})",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = timeString,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+            }
             
             Text(
                 text = SimpleDateFormat("EEEE, d MMMM yyyy", Locale.getDefault()).format(Date()),
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                modifier = Modifier.align(Alignment.Top)
             )
         }
 
@@ -108,10 +134,16 @@ fun PrayerTimeItem(name: String, time: String) {
 }
 
 fun format12h(time24: String): String {
+    val sdf24s = SimpleDateFormat("HH:mm:ss", Locale.US)
+    val sdf24m = SimpleDateFormat("HH:mm", Locale.US)
+    val sdf12 = SimpleDateFormat("h:mm a", Locale.getDefault())
+
     return try {
-        val sdf24 = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
-        val sdf12 = SimpleDateFormat("h:mm a", Locale.getDefault())
-        val date = sdf24.parse(time24)
+        val date = try {
+            sdf24s.parse(time24)
+        } catch (e: Exception) {
+            sdf24m.parse(time24)
+        }
         sdf12.format(date!!)
     } catch (e: Exception) {
         time24

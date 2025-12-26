@@ -1,5 +1,6 @@
 package com.github.soundxflow.azan
 
+import android.util.Log
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.engine.okhttp.*
@@ -22,16 +23,18 @@ object JakimApi {
         return try {
             val response: String = client.get("https://www.e-solat.gov.my/index.php") {
                 parameter("r", "esolatApi/takwimsolat")
-                parameter("period", "today")
+                parameter("period", "month")
                 parameter("zone", zone)
             }.body()
             
+            Log.d("JakimApi", "Response: $response")
+
             Json { 
                 ignoreUnknownKeys = true 
                 isLenient = true 
             }.decodeFromString<JakimResponse>(response)
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e("JakimApi", "Error fetching prayer times", e)
             null
         }
     }
