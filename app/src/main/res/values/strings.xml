@@ -247,4 +247,5 @@
     <string name="_search_history">No recent searches</string>
     <string name="no_search_history">No recent searches</string>
     <string name="tracks">Tracks</string>
+    <string name="data">Data</string>
 </resources>

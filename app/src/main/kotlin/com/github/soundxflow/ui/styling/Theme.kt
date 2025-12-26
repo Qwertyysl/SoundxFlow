@@ -16,6 +16,7 @@ import com.github.core.ui.BuiltInFontFamily.System
 import com.github.core.ui.ColorMode
 import com.github.core.ui.ColorSource
 import com.github.core.ui.Darkness
+import com.github.core.ui.DesignStyle
 import com.github.core.ui.LocalAppearance
 import com.github.core.ui.appearance
 
@@ -53,6 +54,7 @@ fun AppTheme(
     useMaterialNeutral: Boolean = false,
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = false,
+    designStyle: DesignStyle = DesignStyle.Classic,
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
@@ -79,7 +81,8 @@ fun AppTheme(
         sampleBitmap = null,
         fontFamily = System,
         applyFontPadding = true,
-        thumbnailRoundness = 8.dp
+        thumbnailRoundness = 8.dp,
+        designStyle = designStyle
     )
 
     CompositionLocalProvider(LocalAppearance provides appearance) {

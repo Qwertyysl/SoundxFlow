@@ -53,6 +53,7 @@ import androidx.media3.common.MediaItem
 import com.github.innertube.models.NavigationEndpoint
 import com.github.soundxflow.Database
 import com.github.soundxflow.LocalPlayerServiceBinder
+import com.github.soundxflow.service.PlayerService
 import com.github.soundxflow.R
 import com.github.soundxflow.enums.PlaylistSortBy
 import com.github.soundxflow.enums.SortOrder

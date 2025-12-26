@@ -1,5 +1,7 @@
 package com.github.soundxflow
 
+import com.github.soundxflow.service.PlayerBinder
+
 import android.Manifest
 import android.content.ComponentName
 import android.content.Intent
@@ -53,8 +55,10 @@ import com.github.innertube.Innertube
 import com.github.innertube.requests.playlistPage
 import com.github.innertube.requests.song
 import com.github.soundxflow.enums.AppThemeColor
+import com.github.core.ui.DesignStyle
 import com.github.soundxflow.models.LocalMenuState
 import com.github.soundxflow.service.PlayerService
+import com.github.soundxflow.LocalPlayerServiceBinder
 import com.github.soundxflow.ui.github.UpdateCheckWorker
 import com.github.soundxflow.ui.navigation.MainNavigation
 import com.github.soundxflow.ui.navigation.Routes
@@ -63,6 +67,7 @@ import com.github.soundxflow.ui.appearance.PlayerBackground
 import com.github.soundxflow.ui.screens.player.PlayerScaffold
 import com.github.soundxflow.ui.styling.AppTheme
 import com.github.soundxflow.utils.appTheme
+import com.github.soundxflow.utils.designStyleKey
 import com.github.soundxflow.utils.asMediaItem
 import com.github.soundxflow.utils.forcePlay
 import com.github.soundxflow.utils.intent
@@ -78,7 +83,7 @@ import java.util.concurrent.TimeUnit
 class MainActivity : ComponentActivity() {
     private val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-            if (service is PlayerService.Binder) this@MainActivity.binder = service
+            if (service is PlayerBinder) this@MainActivity.binder = service
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
@@ -88,7 +93,7 @@ class MainActivity : ComponentActivity() {
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ){}
-    private var binder by mutableStateOf<PlayerService.Binder?>(null)
+    private var binder by mutableStateOf<PlayerBinder?>(null)
     private var data by mutableStateOf<Uri?>(null)
 
     override fun onStart() {
@@ -135,6 +140,7 @@ class MainActivity : ComponentActivity() {
             )
 
             val appTheme by rememberPreference(appTheme, AppThemeColor.System)
+            val designStyle by rememberPreference(designStyleKey, DesignStyle.Classic)
 
             val darkTheme = when (appTheme) {
                 AppThemeColor.System -> isSystemInDarkTheme()
@@ -145,7 +151,8 @@ class MainActivity : ComponentActivity() {
             AppTheme(
                 darkTheme = darkTheme,
                 usePureBlack = false,
-                useMaterialNeutral = false
+                useMaterialNeutral = false,
+                designStyle = designStyle
             ) {
                 Box(
                     modifier = Modifier.fillMaxSize()
@@ -312,5 +319,5 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-val LocalPlayerServiceBinder = staticCompositionLocalOf<PlayerService.Binder?> { null }
+val LocalPlayerServiceBinder = staticCompositionLocalOf<PlayerBinder?> { null }
 val LocalPlayerPadding = compositionLocalOf { 0.dp }

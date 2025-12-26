@@ -142,9 +142,9 @@ import android.os.Binder as AndroidBinder
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListener.Callback,
     SharedPreferences.OnSharedPreferenceChangeListener {
-    private lateinit var mediaSession: MediaSession
-    private lateinit var cache: SimpleCache
-    private lateinit var player: ExoPlayer
+    internal lateinit var mediaSession: MediaSession
+    internal lateinit var cache: SimpleCache
+    internal lateinit var player: ExoPlayer
 
     private val stateBuilder
         get() = PlaybackState.Builder()
@@ -178,17 +178,17 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
 
     private val metadataBuilder = MediaMetadata.Builder()
 
-    private var notificationManager: NotificationManager? = null
+    internal var notificationManager: NotificationManager? = null
 
-    private var timerJob: TimerJob? = null
+    internal var timerJob: TimerJob? = null
 
-    private var radio: YouTubeRadio? = null
+    internal var radio: YouTubeRadio? = null
 
     private var wifiLock: WifiManager.WifiLock? = null
 
     private lateinit var bitmapProvider: BitmapProvider
 
-    private val coroutineScope = CoroutineScope(Dispatchers.IO) + Job()
+    internal val coroutineScope = CoroutineScope(Dispatchers.IO) + Job()
 
     private var volumeNormalizationJob: Job? = null
 
@@ -196,7 +196,7 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
     private var isShowingThumbnailInLockscreen = true
     override var isInvincibilityEnabled = false
 
-    private var audioManager: AudioManager? = null
+    internal var audioManager: AudioManager? = null
     private var audioDeviceCallback: AudioDeviceCallback? = null
 
     private var loudnessEnhancer: LoudnessEnhancer? = null
@@ -205,7 +205,7 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
     private var currentLyricsLines: List<Pair<Long, String>>? = null
     private var lockscreenLyricsJob: Job? = null
 
-    private val binder = Binder()
+    private val binder = PlayerBinder(this)
 
     private var isNotificationStarted = false
 
@@ -240,9 +240,28 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
 
     override fun onCreate() {
         super.onCreate()
-
-        wifiLock = (getSystemService(Context.WIFI_SERVICE) as? WifiManager)
-            ?.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "PlayerService:WifiLock")
+        
+        // ... (keep existing code)
+        
+        val azanFilter = IntentFilter().apply {
+            addAction("com.github.soundxflow.azan.PLAY_REQUEST")
+        }
+        
+        registerReceiver(object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                if (intent.action == "com.github.soundxflow.azan.PLAY_REQUEST") {
+                    if (player.shouldBePlaying) {
+                        val azanIntent = Intent(context, com.github.soundxflow.azan.AzanService::class.java).apply {
+                            action = "PLAY_AZAN"
+                            putExtra("WAS_PLAYING", true)
+                        }
+                        // Pause current playback
+                        player.pause()
+                        ContextCompat.startForegroundService(context, azanIntent)
+                    }
+                }
+            }
+        }, azanFilter, ContextCompat.RECEIVER_NOT_EXPORTED)
 
         bitmapProvider = BitmapProvider(
             context = applicationContext,
@@ -313,7 +332,7 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
         maybeRestorePlayerQueue()
 
         mediaSession = MediaSession(baseContext, "PlayerService")
-        mediaSession.setCallback(SessionCallback(player))
+        mediaSession.setCallback(SessionCallback(player, cache))
         mediaSession.setPlaybackState(stateBuilder.build())
         mediaSession.isActive = true
 
@@ -820,10 +839,10 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
     override fun notification(): Notification? {
         if (player.currentMediaItem == null) return null
 
-        val playIntent = Action.play.pendingIntent
-        val pauseIntent = Action.pause.pendingIntent
-        val nextIntent = Action.next.pendingIntent
-        val prevIntent = Action.previous.pendingIntent
+        val playIntent = Action.play.pendingIntent(this)
+        val pauseIntent = Action.pause.pendingIntent(this)
+        val nextIntent = Action.next.pendingIntent(this)
+        val prevIntent = Action.previous.pendingIntent(this)
 
         val mediaMetadata = player.mediaMetadata
         val position = player.currentPosition
@@ -948,7 +967,7 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
                             when (val status = body.playabilityStatus?.status) {
                                 "OK" -> body.streamingData?.highestQualityFormat?.let { format ->
                                     val mediaItem = runBlocking(Dispatchers.Main) {
-                                        player.findNextMediaItemById(videoId)
+                                        this@PlayerService.player.findNextMediaItemById(videoId)
                                     }
 
                                     if (mediaItem?.mediaMetadata?.extras?.getString("durationText") == null) {
@@ -1028,92 +1047,13 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
         return RenderersFactory { handler: Handler?, _, audioListener: AudioRendererEventListener?, _, _ ->
             arrayOf(
                 MediaCodecAudioRenderer(
-                    this,
+                    this@PlayerService,
                     MediaCodecSelector.DEFAULT,
                     handler,
                     audioListener,
                     audioSink
                 )
             )
-        }
-    }
-
-    inner class Binder : AndroidBinder() {
-        val player: ExoPlayer
-            get() = this@PlayerService.player
-
-        val cache: Cache
-            get() = this@PlayerService.cache
-
-        val mediaSession
-            get() = this@PlayerService.mediaSession
-
-        val sleepTimerMillisLeft: StateFlow<Long?>?
-            get() = timerJob?.millisLeft
-
-        private var radioJob: Job? = null
-
-        var isLoadingRadio by mutableStateOf(false)
-            private set
-
-        fun startSleepTimer(delayMillis: Long) {
-            timerJob?.cancel()
-
-            timerJob = coroutineScope.timer(delayMillis) {
-                val notification = NotificationCompat
-                    .Builder(this@PlayerService, SLEEP_TIMER_NOTIFICATION_CHANNEL_ID)
-                    .setContentTitle(getString(R.string.sleep_timer_ended))
-                    .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-                    .setAutoCancel(true)
-                    .setOnlyAlertOnce(true)
-                    .setShowWhen(true)
-                    .setSmallIcon(R.drawable.app_icon)
-                    .build()
-
-                notificationManager?.notify(SLEEP_TIMER_NOTIFICATION_ID, notification)
-
-                stopSelf()
-                exitProcess(0)
-            }
-        }
-
-        fun cancelSleepTimer() {
-            timerJob?.cancel()
-            timerJob = null
-        }
-
-        fun setupRadio(endpoint: NavigationEndpoint.Endpoint.Watch?) =
-            startRadio(endpoint = endpoint, justAdd = true)
-
-        fun playRadio(endpoint: NavigationEndpoint.Endpoint.Watch?) =
-            startRadio(endpoint = endpoint, justAdd = false)
-
-        private fun startRadio(endpoint: NavigationEndpoint.Endpoint.Watch?, justAdd: Boolean) {
-            radioJob?.cancel()
-            radio = null
-            YouTubeRadio(
-                endpoint?.videoId,
-                endpoint?.playlistId,
-                endpoint?.playlistSetVideoId,
-                endpoint?.params
-            ).let {
-                isLoadingRadio = true
-                radioJob = coroutineScope.launch(Dispatchers.Main) {
-                    if (justAdd) {
-                        player.addMediaItems(it.process().drop(1))
-                    } else {
-                        player.forcePlayFromBeginning(it.process())
-                    }
-                    radio = it
-                    isLoadingRadio = false
-                }
-            }
-        }
-
-        fun stopRadio() {
-            isLoadingRadio = false
-            radioJob?.cancel()
-            radio = null
         }
     }
 
@@ -1147,7 +1087,7 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
         else player.play()
     }
 
-    private inner class SessionCallback(private val player: Player) : MediaSession.Callback() {
+    private inner class SessionCallback(private val player: Player, private val cache: Cache) : MediaSession.Callback() {
         override fun onPlay() = play()
         override fun onPause() = player.pause()
         override fun onSkipToPrevious() = runCatching(player::forceSeekToPrevious).let { }
@@ -1187,14 +1127,12 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
 
     @JvmInline
     private value class Action(val value: String) {
-        context(Context)
-        val pendingIntent: PendingIntent
-            get() = PendingIntent.getBroadcast(
-                this@Context,
-                100,
-                Intent(value).setPackage(packageName),
-                PendingIntent.FLAG_UPDATE_CURRENT.or(if (isAtLeastAndroid6) PendingIntent.FLAG_IMMUTABLE else 0)
-            )
+        fun pendingIntent(context: Context): PendingIntent = PendingIntent.getBroadcast(
+            context,
+            100,
+            Intent(value).setPackage(context.packageName),
+            PendingIntent.FLAG_UPDATE_CURRENT.or(if (isAtLeastAndroid6) PendingIntent.FLAG_IMMUTABLE else 0)
+        )
 
         companion object {
             val pause = Action("com.github.soundxflow.pause")
@@ -1204,7 +1142,7 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
         }
     }
 
-    private companion object {
+    internal companion object {
         const val NOTIFICATION_ID = 1001
         const val NOTIFICATION_CHANNEL_ID = "default_channel_id"
 
@@ -1213,5 +1151,84 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
 
         const val FAVORITE_ACTION = "FAVORITE"
         const val LOOP_ACTION = "LOOP_ACTION"
+    }
+}
+
+class PlayerBinder(val service: PlayerService) : android.os.Binder() {
+    val player: ExoPlayer
+        get() = service.player
+
+    val cache: Cache
+        get() = service.cache
+
+    val mediaSession
+        get() = service.mediaSession
+
+    val sleepTimerMillisLeft: StateFlow<Long?>?
+        get() = service.timerJob?.millisLeft
+
+    private var radioJob: Job? = null
+
+    var isLoadingRadio by mutableStateOf(false)
+        private set
+
+    fun startSleepTimer(delayMillis: Long) {
+        service.timerJob?.cancel()
+
+        service.timerJob = service.coroutineScope.timer(delayMillis) {
+            val notification = NotificationCompat
+                .Builder(service, PlayerService.SLEEP_TIMER_NOTIFICATION_CHANNEL_ID)
+                .setContentTitle(service.getString(R.string.sleep_timer_ended))
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setAutoCancel(true)
+                .setOnlyAlertOnce(true)
+                .setShowWhen(true)
+                .setSmallIcon(R.drawable.app_icon)
+                .build()
+
+            service.notificationManager?.notify(PlayerService.SLEEP_TIMER_NOTIFICATION_ID, notification)
+
+            service.stopSelf()
+            exitProcess(0)
+        }
+    }
+
+    fun cancelSleepTimer() {
+        service.timerJob?.cancel()
+        service.timerJob = null
+    }
+
+    fun setupRadio(endpoint: NavigationEndpoint.Endpoint.Watch?) =
+        startRadio(endpoint = endpoint, justAdd = true)
+
+    fun playRadio(endpoint: NavigationEndpoint.Endpoint.Watch?) =
+        startRadio(endpoint = endpoint, justAdd = false)
+
+    private fun startRadio(endpoint: NavigationEndpoint.Endpoint.Watch?, justAdd: Boolean) {
+        radioJob?.cancel()
+        service.radio = null
+        YouTubeRadio(
+            endpoint?.videoId,
+            endpoint?.playlistId,
+            endpoint?.playlistSetVideoId,
+            endpoint?.params
+        ).let {
+            isLoadingRadio = true
+            radioJob = service.coroutineScope.launch(Dispatchers.Main) {
+                if (justAdd) {
+                    service.player.addMediaItems(it.process().drop(1))
+                } else {
+                    service.player.forcePlayFromBeginning(it.process())
+                }
+                service.radio = it
+                isLoadingRadio = false
+            }
+        }
+    }
+
+    fun stopRadio() {
+        isLoadingRadio = false
+        radioJob?.cancel()
+        service.radio = null
     }
 }

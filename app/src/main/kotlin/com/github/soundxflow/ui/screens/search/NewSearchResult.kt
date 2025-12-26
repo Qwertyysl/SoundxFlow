@@ -17,6 +17,7 @@ import com.github.innertube.Innertube
 import com.github.innertube.requests.searchPage
 import com.github.innertube.utils.from
 import com.github.soundxflow.LocalPlayerServiceBinder
+import com.github.soundxflow.service.PlayerService
 import com.github.soundxflow.R
 import com.github.soundxflow.models.ActionInfo
 import com.github.soundxflow.models.LocalMenuState

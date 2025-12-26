@@ -43,6 +43,7 @@ import com.github.innertube.Innertube
 import com.github.innertube.requests.lyrics
 import com.github.soundxflow.Database
 import com.github.soundxflow.LocalPlayerServiceBinder
+import com.github.soundxflow.service.PlayerService
 import com.github.soundxflow.ui.styling.Dimensions
 import com.github.soundxflow.utils.DisposableListener
 import com.github.soundxflow.utils.isLandscape
@@ -71,7 +72,7 @@ fun NewPlayer(
     val binder = LocalPlayerServiceBinder.current
     val player = binder?.player ?: return
     var nullableMediaItem by remember {
-        mutableStateOf(
+        mutableStateOf<MediaItem?>(
             player.currentMediaItem,
             neverEqualPolicy()
         )
@@ -136,7 +137,7 @@ fun NewPlayer(
                     if (fetchedSynced == null) {
                         com.github.soundxflow.utils.LrcLib.fetchLyrics(artist, title, album, songDurationSec).onSuccess { response ->
                             val lrcDuration = response?.duration?.toLong() ?: 0L
-                            if (response?.syncedLyrics != null && (lrcDuration == 0L || Math.abs(lrcDuration - songDurationSec) <= 3)) {
+                            if (response?.syncedLyrics != null && (lrcDuration == 0L || (lrcDuration - songDurationSec).let { if (it < 0) -it else it } <= 3L)) {
                                 fetchedSynced = response.syncedLyrics
                                 fetchedFixed = response.plainLyrics
                             }
@@ -153,7 +154,7 @@ fun NewPlayer(
                     // 4. LRCLIB Search
                     if (fetchedSynced == null) {
                         com.github.soundxflow.utils.LrcLib.searchLyrics("$artist $title").onSuccess { results ->
-                            val best = results.find { Math.abs((it.duration ?: 0.0).toLong() - songDurationSec) <= 3 }
+                            val best = results.find { (it.duration?.toLong()?.minus(songDurationSec))?.let { if (it < 0) -it else it }?.let { it <= 3L } ?: false }
                             if (best?.syncedLyrics != null) {
                                 fetchedSynced = best.syncedLyrics
                                 fetchedFixed = best.plainLyrics
@@ -328,7 +329,9 @@ fun NewPlayer(
                                 PlayerMiddleControl(
                                     showPlaylist = showPlaylist,
                                     onTogglePlaylist = { showPlaylist = it },
-                                    mediaId = mediaItem.mediaId
+                                    mediaId = mediaItem.mediaId,
+                                    onGoToAlbum = onGoToAlbum,
+                                    onGoToArtist = onGoToArtist
                                 )
                             }
                         }

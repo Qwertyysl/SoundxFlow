@@ -18,39 +18,30 @@ import java.util.concurrent.TimeUnit
 class AzanWorker(context: Context, workerParams: WorkerParameters) : CoroutineWorker(context, workerParams) {
 
     override suspend fun doWork(): Result {
-        Log.d("AzanWorker", "Starting AzanWorker")
         val preferences = applicationContext.preferences
         val azanEnabled = preferences.getBoolean(azanReminderEnabledKey, false)
         if (!azanEnabled) {
-            Log.d("AzanWorker", "Azan is disabled")
             return Result.success()
         }
 
         val zone = preferences.getString(azanLocationKey, "WLY01") ?: "WLY01"
-        Log.d("AzanWorker", "Fetching prayer times for zone: $zone")
         val response = JakimApi.getPrayerTimes(zone) ?: run {
-            Log.e("AzanWorker", "Failed to fetch prayer times")
             return Result.retry()
         }
 
         if (response.prayerTime.isEmpty()) {
-            Log.e("AzanWorker", "Prayer time list is empty")
             return Result.failure()
         }
 
         // Update UI with today's times
         val todayStr = SimpleDateFormat("dd-MMM-yyyy", Locale.US).format(Date())
-        Log.d("AzanWorker", "Today is $todayStr")
-        val todayPrayerTime = response.prayerTime.find { it.date == todayStr } ?: response.prayerTime.first().also {
-            Log.w("AzanWorker", "Could not find prayer times for today ($todayStr), using first available: ${it.date}")
-        }
+        val todayPrayerTime = response.prayerTime.find { it.date == todayStr } ?: response.prayerTime.first()
         
         preferences.edit {
             putString(prayerTimesTodayKey, Json.encodeToString(todayPrayerTime))
         }
 
         // Schedule alarms for all days returned (usually just today if period=today, or a week if changed)
-        Log.d("AzanWorker", "Scheduling alarms for ${response.prayerTime.size} days")
         response.prayerTime.forEach { prayerTime ->
             scheduleAlarms(prayerTime)
         }
@@ -117,7 +108,6 @@ class AzanWorker(context: Context, workerParams: WorkerParameters) : CoroutineWo
         }
 
         val now = System.currentTimeMillis()
-        Log.d("AzanWorker", "Scheduling alarm for $timeStr on $dateStr (Millis: ${prayerCalendar.timeInMillis}, Now: $now)")
         
         // Use a unique ID based on date and prayer to avoid overlapping alarms
         val baseId = (prayerCalendar.get(Calendar.DAY_OF_YEAR) * 100) + (prayerId * 10)

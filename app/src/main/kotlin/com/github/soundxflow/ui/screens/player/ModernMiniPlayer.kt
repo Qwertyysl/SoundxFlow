@@ -1,6 +1,8 @@
 package com.github.soundxflow.ui.screens.player
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,6 +16,8 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -31,6 +35,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -42,11 +47,9 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import coil3.compose.AsyncImage
 import com.github.core.ui.LocalAppearance
-import com.github.core.ui.collapsedPlayerProgressBar
 import com.github.soundxflow.LocalPlayerServiceBinder
 import com.github.soundxflow.service.PlayerService
 import com.github.soundxflow.R
-import com.github.soundxflow.ui.appearance.DynamicBackground
 import com.github.soundxflow.ui.styling.Dimensions
 import com.github.soundxflow.ui.styling.px
 import com.github.soundxflow.utils.rememberPreference
@@ -55,9 +58,12 @@ import com.github.soundxflow.utils.positionAndDurationState
 import com.github.soundxflow.utils.shouldBePlaying
 import com.github.soundxflow.utils.thumbnail
 
+import com.github.soundxflow.utils.forceSeekToNext
+import com.github.soundxflow.utils.forceSeekToPrevious
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NewMiniPlayer(
+fun ModernMiniPlayer(
     openPlayer: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -86,24 +92,34 @@ fun NewMiniPlayer(
         }
     }
     val positionAndDuration by player.positionAndDurationState()
+    val isAzanPlaying by rememberPreference(com.github.soundxflow.utils.isAzanPlayingKey, false)
     val mediaItem = nullableMediaItem ?: return
     val (colorPalette) = LocalAppearance.current
 
-    val title = mediaItem.mediaMetadata.title?.toString() ?: ""
-    val artist = mediaItem.mediaMetadata.artist?.toString() ?: ""
-    val album = mediaItem.mediaMetadata.albumTitle?.toString() ?: ""
+    val title = if (isAzanPlaying) "AZAN" else mediaItem.mediaMetadata.title?.toString() ?: ""
+    val artist = if (isAzanPlaying) "Playing Azan..." else mediaItem.mediaMetadata.artist?.toString() ?: ""
 
     val navigationBarsPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
-    DynamicBackground(
-        thumbnailUrl = mediaItem.mediaMetadata.artworkUri.toString(),
-        animate = false,
-        useGradient = false,
+    // Modern look: Floating card style
+    Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(72.dp + navigationBarsPadding)
+            .height(80.dp + navigationBarsPadding) // Slightly taller
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        colorPalette.background2.copy(alpha = 0.95f),
+                        colorPalette.background1.copy(alpha = 0.95f)
+                    )
+                )
+            )
             .clickable(onClick = openPlayer)
     ) {
+        // Progress Indicator as background or bottom line? 
+        // Let's do a bottom line inside the card
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -118,10 +134,9 @@ fun NewMiniPlayer(
                     val barWidth = size.width * fraction
 
                     if (barWidth > 0f) {
-                        // Draw progress bar at the bottom of the 72dp content area
                         drawRect(
-                            color = colorPalette.collapsedPlayerProgressBar.copy(alpha = 0.8f),
-                            topLeft = Offset(0f, 72.dp.toPx() - 2.dp.toPx()),
+                            color = colorPalette.accent, // Use accent color
+                            topLeft = Offset(0f, size.height - 2.dp.toPx()),
                             size = Size(width = barWidth, height = 2.dp.toPx())
                         )
                     }
@@ -130,16 +145,17 @@ fun NewMiniPlayer(
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(72.dp)
+                    .fillMaxSize()
                     .padding(horizontal = 12.dp)
+                    .padding(bottom = 2.dp) // Space for progress bar
             ) {
                 AsyncImage(
                     model = mediaItem.mediaMetadata.artworkUri.thumbnail(Dimensions.thumbnails.song.px),
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
-                        .clip(MaterialTheme.shapes.medium)
+                        .clip(CircleShape) // Circular artwork for Modern look? Or Rounded? Let's go Rounded.
+                        .clip(RoundedCornerShape(8.dp))
                         .size(48.dp),
                     placeholder = painterResource(id = R.drawable.app_icon),
                     error = painterResource(id = R.drawable.app_icon),
@@ -160,40 +176,74 @@ fun NewMiniPlayer(
                         color = colorPalette.text
                     )
                     Text(
-                        text = if (album.isNotEmpty()) "$artist • $album" else artist,
+                        text = artist,
                         style = MaterialTheme.typography.bodySmall,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        color = colorPalette.text.copy(alpha = 0.7f),
+                        color = colorPalette.textSecondary,
                         fontSize = 11.sp
                     )
                 }
 
-                MiniPlayerControl(
-                    playing = shouldBePlaying,
-                    onClick = {
-                        if (shouldBePlaying) player.pause()
-                        else {
-                            if (player.playbackState == Player.STATE_IDLE) {
-                                player.prepare()
-                            } else if (player.playbackState == Player.STATE_ENDED) {
-                                player.seekToDefaultPosition(0)
-                            }
-                            player.play()
-                        }
-                    }
-                )
-
-                IconButton(
-                    onClick = openPlayer,
-                    modifier = Modifier.size(32.dp)
+                // Controls Row
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.chevron_up),
-                        contentDescription = "Open Player",
-                        tint = colorPalette.text,
-                        modifier = Modifier.size(20.dp)
-                    )
+                    // Previous
+                    IconButton(
+                        onClick = { player.forceSeekToPrevious() },
+                        modifier = Modifier.size(32.dp),
+                        enabled = !isAzanPlaying
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.play_skip_back),
+                            contentDescription = "Previous",
+                            tint = if (isAzanPlaying) colorPalette.text.copy(alpha = 0.5f) else colorPalette.text,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+
+                    // Play/Pause Button
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(if (isAzanPlaying) colorPalette.accent.copy(alpha = 0.05f) else colorPalette.accent.copy(alpha = 0.1f))
+                            .clickable(enabled = !isAzanPlaying) {
+                                if (shouldBePlaying) player.pause()
+                                else {
+                                    if (player.playbackState == Player.STATE_IDLE) {
+                                        player.prepare()
+                                    } else if (player.playbackState == Player.STATE_ENDED) {
+                                        player.seekToDefaultPosition(0)
+                                    }
+                                    player.play()
+                                }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            painter = painterResource(id = if (shouldBePlaying) R.drawable.pause else R.drawable.play),
+                            contentDescription = if (shouldBePlaying) "Pause" else "Play",
+                            tint = if (isAzanPlaying) colorPalette.accent.copy(alpha = 0.5f) else colorPalette.accent,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+
+                    // Next
+                    IconButton(
+                        onClick = { player.forceSeekToNext() },
+                        modifier = Modifier.size(32.dp),
+                        enabled = !isAzanPlaying
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.play_skip_forward),
+                            contentDescription = "Next",
+                            tint = if (isAzanPlaying) colorPalette.text.copy(alpha = 0.5f) else colorPalette.text,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
                 }
             }
         }

@@ -36,9 +36,11 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.navigation.NavController
 import com.github.core.ui.LocalAppearance
+import com.github.core.ui.DesignStyle
 import com.github.soundxflow.LocalPlayerPadding
 import com.github.soundxflow.LocalPlayerServiceBinder
-import com.github.soundxflow.ui.appearance.PlayerBackground // <--- Import this
+import com.github.soundxflow.service.PlayerService
+import com.github.soundxflow.ui.appearance.PlayerBackground
 import com.github.soundxflow.ui.navigation.Routes
 import kotlinx.coroutines.launch
 
@@ -54,7 +56,7 @@ fun PlayerScaffold(
     val scope = rememberCoroutineScope()
     val layoutDirection = LocalLayoutDirection.current
     val scaffoldState = rememberBottomSheetScaffoldState(bottomSheetState = sheetState)
-    val (colorPalette) = LocalAppearance.current
+    val appearance = LocalAppearance.current
 
     val binder = LocalPlayerServiceBinder.current
     val player = binder?.player
@@ -78,8 +80,9 @@ fun PlayerScaffold(
 
     val navigationBarsPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
+    val basePeekHeight = if (appearance.designStyle == DesignStyle.Modern) 80.dp else 72.dp
     val targetPeekHeight = if (showPlayer) {
-        72.dp + navigationBarsPadding
+        basePeekHeight + navigationBarsPadding
     } else {
         0.dp
     }
@@ -114,32 +117,60 @@ fun PlayerScaffold(
                             modifier = Modifier.fillMaxHeight()
                         ) {
                             if (value == SheetValue.Expanded) {
-                                NewPlayer(
-                                    onGoToAlbum = { browseId ->
-                                        scope.launch { sheetState.partialExpand() }
-                                        navController.navigate(
-                                            route = Routes.Album(id = browseId)
-                                        )
-                                    },
-                                    onGoToArtist = { browseId ->
-                                        scope.launch { sheetState.partialExpand() }
-                                        navController.navigate(
-                                            route = Routes.Artist(id = browseId)
-                                        )
-                                    },
-                                    onMinimize = {
-                                        scope.launch { sheetState.partialExpand() }
-                                    }
-                                )
+                                if (appearance.designStyle == DesignStyle.Modern) {
+                                    ModernPlayer(
+                                        onGoToAlbum = { browseId ->
+                                            scope.launch { sheetState.partialExpand() }
+                                            navController.navigate(
+                                                route = Routes.Album(id = browseId)
+                                            )
+                                        },
+                                        onGoToArtist = { browseId ->
+                                            scope.launch { sheetState.partialExpand() }
+                                            navController.navigate(
+                                                route = Routes.Artist(id = browseId)
+                                            )
+                                        },
+                                        onMinimize = {
+                                            scope.launch { sheetState.partialExpand() }
+                                        }
+                                    )
+                                } else {
+                                    NewPlayer(
+                                        onGoToAlbum = { browseId ->
+                                            scope.launch { sheetState.partialExpand() }
+                                            navController.navigate(
+                                                route = Routes.Album(id = browseId)
+                                            )
+                                        },
+                                        onGoToArtist = { browseId ->
+                                            scope.launch { sheetState.partialExpand() }
+                                            navController.navigate(
+                                                route = Routes.Artist(id = browseId)
+                                            )
+                                        },
+                                        onMinimize = {
+                                            scope.launch { sheetState.partialExpand() }
+                                        }
+                                    )
+                                }
                             } else {
                                 Box(
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    NewMiniPlayer(
-                                        openPlayer = {
-                                            scope.launch { sheetState.expand() }
-                                        }
-                                    )
+                                    if (appearance.designStyle == DesignStyle.Modern) {
+                                        ModernMiniPlayer(
+                                            openPlayer = {
+                                                scope.launch { sheetState.expand() }
+                                            }
+                                        )
+                                    } else {
+                                        NewMiniPlayer(
+                                            openPlayer = {
+                                                scope.launch { sheetState.expand() }
+                                            }
+                                        )
+                                    }
                                 }
                             }
                         }

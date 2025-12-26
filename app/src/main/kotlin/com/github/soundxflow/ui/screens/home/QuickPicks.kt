@@ -50,6 +50,7 @@ import com.github.innertube.models.NavigationEndpoint
 import com.github.soundxflow.Database
 import com.github.soundxflow.LocalPlayerPadding
 import com.github.soundxflow.LocalPlayerServiceBinder
+import com.github.soundxflow.service.PlayerService
 import com.github.soundxflow.R
 import com.github.soundxflow.enums.QuickPicksSource
 import com.github.soundxflow.models.LocalMenuState

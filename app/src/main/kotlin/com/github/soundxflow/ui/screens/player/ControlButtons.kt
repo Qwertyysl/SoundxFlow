@@ -66,6 +66,7 @@ import com.github.core.ui.surface
 import com.github.innertube.models.NavigationEndpoint
 import com.github.soundxflow.Database
 import com.github.soundxflow.LocalPlayerServiceBinder
+import com.github.soundxflow.service.PlayerService
 import com.github.soundxflow.R
 import com.github.soundxflow.models.LocalMenuState
 import com.github.soundxflow.models.Song
@@ -200,6 +201,7 @@ fun MiniPlayerControl(
 ) {
     val binder = LocalPlayerServiceBinder.current
     val (colorPalette) = LocalAppearance.current
+    val isAzanPlaying by rememberPreference(com.github.soundxflow.utils.isAzanPlayingKey, false)
     
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -208,12 +210,14 @@ fun MiniPlayerControl(
     ) {
         //skip back button
         AnimatedIconButton(
-            onClick = { binder?.player?.forceSeekToPrevious() }, modifier = modifier.size(42.dp)
+            onClick = { binder?.player?.forceSeekToPrevious() }, 
+            modifier = modifier.size(42.dp),
+            enabled = !isAzanPlaying
         ) {
             Icon(
                 painter = painterResource(id = R.drawable.fast_backward),
                 contentDescription = null,
-                tint = colorPalette.iconColor,
+                tint = if (isAzanPlaying) colorPalette.iconColor.copy(alpha = 0.5f) else colorPalette.iconColor,
                 modifier = Modifier.size(16.dp)
             )
         }
@@ -221,12 +225,13 @@ fun MiniPlayerControl(
         AnimatedIconButton(
             onClick = onClick,
             modifier = modifier
-                .semantics { contentDescription = if (playing) "Pause" else "Play" }
+                .semantics { contentDescription = if (playing) "Pause" else "Play" },
+            enabled = !isAzanPlaying
         ) {
             Icon(
                 painter = painterResource(id = if (playing) R.drawable.pause else R.drawable.play),
                 contentDescription = null,
-                tint = colorPalette.iconColor,
+                tint = if (isAzanPlaying) colorPalette.iconColor.copy(alpha = 0.5f) else colorPalette.iconColor,
                 modifier = Modifier
                     .size(28.dp)
             )
@@ -234,12 +239,14 @@ fun MiniPlayerControl(
 
         //skip forward button
         AnimatedIconButton(
-            onClick = { binder?.player?.forceSeekToNext() }, modifier = modifier.size(42.dp)
+            onClick = { binder?.player?.forceSeekToNext() }, 
+            modifier = modifier.size(42.dp),
+            enabled = !isAzanPlaying
         ) {
             Icon(
                 painter = painterResource(id = R.drawable.fast_forward),
                 contentDescription = null,
-                tint = colorPalette.iconColor,
+                tint = if (isAzanPlaying) colorPalette.iconColor.copy(alpha = 0.5f) else colorPalette.iconColor,
                 modifier = Modifier.size(16.dp)
             )
         }
@@ -250,10 +257,13 @@ fun MiniPlayerControl(
 fun PlayerMiddleControl(
     showPlaylist: Boolean,
     onTogglePlaylist: (Boolean) -> Unit,
-    mediaId: String
+    mediaId: String,
+    onGoToAlbum: (String) -> Unit,
+    onGoToArtist: (String) -> Unit
 ) {
     val binder = LocalPlayerServiceBinder.current
     val (colorPalette) = LocalAppearance.current
+    val menuState = LocalMenuState.current
     var likedAt by rememberSaveable { mutableStateOf<Long?>(null) }
 
     LaunchedEffect(mediaId) {
@@ -304,7 +314,17 @@ fun PlayerMiddleControl(
         }
 
         AnimatedIconButton(
-            onClick = {/*todo*/},
+            onClick = {
+                val currentMediaItem = binder?.player?.currentMediaItem ?: return@AnimatedIconButton
+                menuState.display {
+                    BaseMediaItemMenu(
+                        onDismiss = menuState::hide,
+                        mediaItem = currentMediaItem,
+                        onGoToAlbum = onGoToAlbum,
+                        onGoToArtist = onGoToArtist
+                    )
+                }
+            },
         ) {
             Icon(
                 painter = painterResource(id = R.drawable.add),
@@ -326,6 +346,7 @@ fun PlayerControlBottom(
     val (colorPalette) = LocalAppearance.current
     var trackLoopEnabled by rememberPreference(trackLoopEnabledKey, defaultValue = false)
     var queueLoopEnabled by rememberPreference(queueLoopEnabledKey, defaultValue = false)
+    val isAzanPlaying by rememberPreference(com.github.soundxflow.utils.isAzanPlayingKey, false)
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -339,24 +360,26 @@ fun PlayerControlBottom(
             onClick = {
                 player.shuffleModeEnabled = !player.shuffleModeEnabled
                 player.shuffleQueue()
-            }
+            },
+            enabled = !isAzanPlaying
         ) {
             Icon(
                 painter = painterResource(id = R.drawable.shuffle),
                 contentDescription = "Shuffle",
-                tint = colorPalette.iconColor,
+                tint = if (isAzanPlaying) colorPalette.iconColor.copy(alpha = 0.5f) else colorPalette.iconColor,
                 modifier = Modifier.size(24.dp)
             )
         }
 
         // Previous
         AnimatedIconButton(
-            onClick = { binder.player.forceSeekToPrevious() }
+            onClick = { binder.player.forceSeekToPrevious() },
+            enabled = !isAzanPlaying
         ) {
             Icon(
                 painter = painterResource(id = R.drawable.fast_backward),
                 contentDescription = "Previous",
-                tint = colorPalette.iconColor,
+                tint = if (isAzanPlaying) colorPalette.iconColor.copy(alpha = 0.5f) else colorPalette.iconColor,
                 modifier = Modifier.size(18.dp)
             )
         }
@@ -364,17 +387,21 @@ fun PlayerControlBottom(
         // Play / Pause
         PlayPauseButton(
             playing = shouldBePlaying,
-            onClick = onPlayPauseClick
+            onClick = onPlayPauseClick,
+            modifier = Modifier.alpha(if (isAzanPlaying) 0.5f else 1f).then(
+                if (isAzanPlaying) Modifier else Modifier // Placeholder
+            )
         )
 
         // Next
         AnimatedIconButton(
             onClick = { binder.player.forceSeekToNext() },
+            enabled = !isAzanPlaying
         ) {
             Icon(
                 painter = painterResource(id = R.drawable.fast_forward),
                 contentDescription = "Next",
-                tint = colorPalette.iconColor,
+                tint = if (isAzanPlaying) colorPalette.iconColor.copy(alpha = 0.5f) else colorPalette.iconColor,
                 modifier = Modifier.size(18.dp)
             )
         }
@@ -390,7 +417,8 @@ fun PlayerControlBottom(
                 } else {
                     queueLoopEnabled = true
                 }
-            }
+            },
+            enabled = !isAzanPlaying
         ) {
             val repeatMode = when {
                 trackLoopEnabled -> Player.REPEAT_MODE_ONE
@@ -406,10 +434,10 @@ fun PlayerControlBottom(
 
             Icon(
                 painter = icon,
-                tint = colorPalette.iconColor,
+                tint = if (isAzanPlaying) colorPalette.iconColor.copy(alpha = 0.5f) else colorPalette.iconColor,
                 contentDescription = null,
                 modifier = Modifier
-                    .alpha(alpha)
+                    .alpha(if (isAzanPlaying) 0.5f else alpha)
                     .size(28.dp)
             )
         }

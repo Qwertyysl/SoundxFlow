@@ -1,5 +1,7 @@
 package com.github.soundxflow
 
+import com.github.soundxflow.service.PlayerBinder
+
 import android.content.ComponentName
 import android.content.Intent
 import android.content.ServiceConnection
@@ -23,10 +25,10 @@ import com.github.soundxflow.utils.rememberPreference
 
 class SettingsActivity : ComponentActivity() {
 
-    private var binder by mutableStateOf<PlayerService.Binder?>(null)
+    private var binder by mutableStateOf<PlayerBinder?>(null)
     private val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-            if (service is PlayerService.Binder) {
+            if (service is PlayerBinder) {
                 this@SettingsActivity.binder = service
             }
         }

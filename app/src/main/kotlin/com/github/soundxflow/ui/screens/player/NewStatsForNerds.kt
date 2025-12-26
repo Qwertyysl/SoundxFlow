@@ -38,9 +38,13 @@ import androidx.media3.datasource.cache.Cache
 import androidx.media3.datasource.cache.CacheSpan
 import com.github.core.ui.LocalAppearance
 import com.github.innertube.Innertube
-import com.github.innertube.requests.player
 import com.github.soundxflow.Database
+import androidx.media3.exoplayer.ExoPlayer
+import com.github.innertube.models.PlayerResponse
+import com.github.innertube.requests.player as innertubePlayer
 import com.github.soundxflow.LocalPlayerServiceBinder
+import com.github.soundxflow.service.PlayerService
+import com.github.soundxflow.service.PlayerBinder
 import com.github.soundxflow.R
 import com.github.soundxflow.models.Format
 import kotlinx.coroutines.Dispatchers
@@ -73,9 +77,9 @@ fun NewStatsForNerds(
                 binder.player.currentMediaItem?.takeIf { it.mediaId == mediaId }?.let { mediaItem ->
                     withContext(Dispatchers.IO) {
                         delay(2000)
-                        Innertube.player(videoId = mediaId)?.onSuccess { response ->
+                        Innertube.innertubePlayer(videoId = mediaId)?.onSuccess { response ->
                             response.streamingData?.highestQualityFormat?.let { format ->
-                                Database.insert(mediaItem)
+                                Database.insert(mediaItem) { it }
                                 Database.insert(
                                     Format(
                                         songId = mediaId,

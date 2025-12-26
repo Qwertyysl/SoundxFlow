@@ -5,24 +5,25 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import androidx.core.content.ContextCompat
+import com.github.soundxflow.utils.shouldBePlaying
+import com.github.soundxflow.MainActivity
+import com.github.soundxflow.service.PlayerService
+import android.os.IBinder
+import android.content.ServiceConnection
+import android.content.ComponentName
 
 class AzanReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        Log.d("AzanReceiver", "Received intent with action: ${intent.action}")
         when (intent.action) {
             "com.github.soundxflow.azan.PAUSE" -> {
-                Log.d("AzanReceiver", "Pausing player for Azan")
-                val pauseIntent = Intent("com.github.soundxflow.pause").apply {
-                    setPackage(context.packageName)
-                }
-                context.sendBroadcast(pauseIntent)
+                // We check if something is playing before triggering Azan logic
+                // But PAUSE is 5 seconds before. Let's just handle it in PLAY.
             }
             "com.github.soundxflow.azan.PLAY" -> {
-                Log.d("AzanReceiver", "Starting AzanService to play Azan")
-                val serviceIntent = Intent(context, AzanService::class.java).apply {
-                    action = "PLAY_AZAN"
+                val playRequestIntent = Intent("com.github.soundxflow.azan.PLAY_REQUEST").apply {
+                    setPackage(context.packageName)
                 }
-                ContextCompat.startForegroundService(context, serviceIntent)
+                context.sendBroadcast(playRequestIntent)
             }
         }
     }

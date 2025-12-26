@@ -50,10 +50,13 @@ const val prayerTimesTodayKey = "prayerTimesToday"
 
 const val appTheme = "appTheme"
 const val accentColorSource = "accentColorSource"
+const val designStyleKey = "designStyle"
 const val navigationLabelsVisibilityKey = "navigationLabelsVisibility"
 const val listGesturesEnabledKey = "listGesturesEnabled"
 const val playerGesturesEnabledKey = "songGesturesEnabled"
 const val miniplayerGesturesEnabledKey = "miniplayerGesturesEnabled"
+
+const val isAzanPlayingKey = "isAzanPlaying"
 
 inline fun <reified T : Enum<T>> SharedPreferences.getEnum(
     key: String,

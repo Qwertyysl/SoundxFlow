@@ -18,6 +18,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.github.core.ui.LocalAppearance
+import com.github.core.ui.DesignStyle
 import com.github.soundxflow.R
 import com.github.soundxflow.enums.AccentColorSource
 import com.github.soundxflow.enums.AppThemeColor
@@ -26,6 +27,7 @@ import com.github.soundxflow.ui.components.SettingsCard
 import com.github.soundxflow.ui.components.SettingsScreenLayout
 import com.github.soundxflow.utils.accentColorSource
 import com.github.soundxflow.utils.appTheme
+import com.github.soundxflow.utils.designStyleKey
 import com.github.soundxflow.utils.isLockscreenLyricsEnabledKey
 import com.github.soundxflow.utils.rememberPreference
 import androidx.compose.material3.Switch
@@ -41,6 +43,7 @@ fun AppearanceSettings(
     val context = LocalContext.current
     var appThemeColor by rememberPreference(appTheme, AppThemeColor.System)
     var accentColorSource by rememberPreference(accentColorSource, AccentColorSource.Default )
+    var designStyle by rememberPreference(designStyleKey, DesignStyle.Classic)
     var isLockscreenLyricsEnabled by rememberPreference(isLockscreenLyricsEnabledKey, false)
 
     BackHandler(onBack = onBackClick)
@@ -69,6 +72,14 @@ fun AppearanceSettings(
                     onValueSelected = { appThemeColor = it },
                     icon = IconSource.Icon( painterResource(id = R.drawable.dark_mode)),
                     valueText = { context.getString(it.resourceId) }
+                )
+
+                EnumValueSelectorSettingsEntry(
+                    title = "Design Style",
+                    selectedValue = designStyle,
+                    onValueSelected = { designStyle = it },
+                    icon = IconSource.Icon(painterResource(id = R.drawable.experimental)),
+                    valueText = { it.name }
                 )
 
                 EnumValueSelectorSettingsEntry(

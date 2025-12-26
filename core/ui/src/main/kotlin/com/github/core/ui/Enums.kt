@@ -3,6 +3,8 @@ package com.github.core.ui
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.github.core.ui.utils.roundedShape
+import android.os.Parcelable
+import kotlinx.parcelize.Parcelize
 
 enum class ThumbnailRoundness(val dp: Dp) {
     None(0.dp),
@@ -31,4 +33,10 @@ enum class Darkness {
     Normal,
     AMOLED,
     PureBlack
+}
+
+@Parcelize
+enum class DesignStyle : Parcelable {
+    Classic,
+    Modern
 }

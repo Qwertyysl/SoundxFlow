@@ -24,16 +24,32 @@ import com.github.soundxflow.ui.components.HorizontalTabs
 import com.github.soundxflow.ui.components.TopBar
 import com.github.soundxflow.ui.navigation.Routes
 import com.github.soundxflow.azan.AzanWidget
+import com.github.core.ui.DesignStyle
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.Alignment
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 
 @Composable
 fun HomeScreen(
     navController: NavController,
     onSettingsClick: () -> Unit
 ) {
-
-
     val pagerState = rememberPagerState(initialPage = 0, pageCount = { 5 })
-    val (colorPalette) = LocalAppearance.current
+    val appearance = LocalAppearance.current
+    val (colorPalette) = appearance
+    
     val navigateToAlbum = { browseId: String ->
         navController.navigate(route = Routes.Album(id = browseId))
     }
@@ -41,71 +57,138 @@ fun HomeScreen(
         navController.navigate(route = Routes.Artist(id = browseId))
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .statusBarsPadding()
-    ) {
-        TopBar(
-            onSearch = { navController.navigate(route = Routes.Search) },
-            onSettingsClick = onSettingsClick,
-        )
-
-        AzanWidget()
-
-        Spacer(modifier = Modifier.padding(vertical = 2.dp))
-
-        HorizontalTabs(pagerState = pagerState)
-
-        Box(
+    if (appearance.designStyle == DesignStyle.Modern) {
+        // MODERN LAYOUT
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .clip(RoundedCornerShape(topStart = 25.dp, topEnd = 25.dp))
-                .background(color = colorPalette.baseColor)
+                .background(colorPalette.background0)
+                .statusBarsPadding()
         ) {
-            HorizontalPager(
-                state = pagerState,
+            // Header
+            Row(
                 modifier = Modifier
-                    .fillMaxSize()
-            ) { page ->
-                when (page) {
-                    0 -> QuickPicks(
-                        onAlbumClick = navigateToAlbum,
-                        onArtistClick = navigateToArtist,
-                        onPlaylistClick = { browseId ->
-                            navController.navigate(route = Routes.Playlist(id = browseId))
-                        },
-                        onOfflinePlaylistClick = {
-                            navController.navigate(route = Routes.BuiltInPlaylist(index = 1))
-                        }
-                    )
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Home",
+                    style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold),
+                    color = colorPalette.text
+                )
+                Row {
+                    IconButton(onClick = { navController.navigate(route = Routes.Search) }) {
+                        Icon(Icons.Outlined.Search, contentDescription = "Search", tint = colorPalette.text)
+                    }
+                    IconButton(onClick = onSettingsClick) {
+                        Icon(Icons.Outlined.Settings, contentDescription = "Settings", tint = colorPalette.text)
+                    }
+                }
+            }
 
-                    1 -> HomeSongs(
-                        onGoToAlbum = navigateToAlbum,
-                        onGoToArtist = navigateToArtist
-                    )
+            Box(modifier = Modifier.padding(horizontal = 24.dp)) {
+                AzanWidget()
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
 
-                    2 -> HomeArtistList(
-                        onArtistClick = { artist -> navigateToArtist(artist.id) }
-                    )
+            HorizontalTabs(pagerState = pagerState)
+            
+            Spacer(modifier = Modifier.height(8.dp))
 
-                    3 -> HomeAlbums(
-                        onAlbumClick = { album -> navigateToAlbum(album.id) }
-                    )
-
-                    4 -> HomePlaylists(
-                        onBuiltInPlaylist = { playlistIndex ->
-                            navController.navigate(route = Routes.BuiltInPlaylist(index = playlistIndex))
-                        },
-                        onPlaylistClick = { playlist ->
-                            navController.navigate(route = Routes.LocalPlaylist(id = playlist.id))
-                        }
-                    )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+            ) {
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.fillMaxSize()
+                ) { page ->
+                    when (page) {
+                        0 -> QuickPicks(
+                            onAlbumClick = navigateToAlbum,
+                            onArtistClick = navigateToArtist,
+                            onPlaylistClick = { browseId -> navController.navigate(route = Routes.Playlist(id = browseId)) },
+                            onOfflinePlaylistClick = { navController.navigate(route = Routes.BuiltInPlaylist(index = 1)) }
+                        )
+                        1 -> HomeSongs(onGoToAlbum = navigateToAlbum, onGoToArtist = navigateToArtist)
+                        2 -> HomeArtistList(onArtistClick = { artist -> navigateToArtist(artist.id) })
+                        3 -> HomeAlbums(onAlbumClick = { album -> navigateToAlbum(album.id) })
+                        4 -> HomePlaylists(
+                            onBuiltInPlaylist = { playlistIndex -> navController.navigate(route = Routes.BuiltInPlaylist(index = playlistIndex)) },
+                            onPlaylistClick = { playlist -> navController.navigate(route = Routes.LocalPlaylist(id = playlist.id)) }
+                        )
+                    }
                 }
             }
         }
+    } else {
+        // CLASSIC LAYOUT
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+        ) {
+            TopBar(
+                onSearch = { navController.navigate(route = Routes.Search) },
+                onSettingsClick = onSettingsClick,
+            )
 
+            AzanWidget()
 
+            Spacer(modifier = Modifier.padding(vertical = 2.dp))
+
+            HorizontalTabs(pagerState = pagerState)
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(topStart = 25.dp, topEnd = 25.dp))
+                    .background(color = colorPalette.baseColor)
+            ) {
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.fillMaxSize()
+                ) { page ->
+                    when (page) {
+                        0 -> QuickPicks(
+                            onAlbumClick = navigateToAlbum,
+                            onArtistClick = navigateToArtist,
+                            onPlaylistClick = { browseId ->
+                                navController.navigate(route = Routes.Playlist(id = browseId))
+                            },
+                            onOfflinePlaylistClick = {
+                                navController.navigate(route = Routes.BuiltInPlaylist(index = 1))
+                            }
+                        )
+
+                        1 -> HomeSongs(
+                            onGoToAlbum = navigateToAlbum,
+                            onGoToArtist = navigateToArtist
+                        )
+
+                        2 -> HomeArtistList(
+                            onArtistClick = { artist -> navigateToArtist(artist.id) }
+                        )
+
+                        3 -> HomeAlbums(
+                            onAlbumClick = { album -> navigateToAlbum(album.id) }
+                        )
+
+                        4 -> HomePlaylists(
+                            onBuiltInPlaylist = { playlistIndex ->
+                                navController.navigate(route = Routes.BuiltInPlaylist(index = playlistIndex))
+                            },
+                            onPlaylistClick = { playlist ->
+                                navController.navigate(route = Routes.LocalPlaylist(id = playlist.id))
+                            }
+                        )
+                    }
+                }
+            }
+        }
     }
-
 }

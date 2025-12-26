@@ -61,6 +61,7 @@ import com.github.soundxflow.LocalPlayerServiceBinder
 import com.github.soundxflow.R
 import com.github.soundxflow.models.Song
 import com.github.soundxflow.query
+import com.github.soundxflow.service.PlayerService
 import com.github.soundxflow.service.LoginRequiredException
 import com.github.soundxflow.service.PlayableFormatNotFoundException
 import com.github.soundxflow.service.UnplayableException
@@ -240,7 +241,7 @@ fun NewThumbnail(
                                         currentMediaItem
                                             ?.takeIf { it.mediaId == mediaId }
                                             ?.let {
-                                                Database.insert(currentMediaItem, Song::toggleLike)
+                                                Database.insert(it, Song::toggleLike)
                                             }
                                     }
                                 }

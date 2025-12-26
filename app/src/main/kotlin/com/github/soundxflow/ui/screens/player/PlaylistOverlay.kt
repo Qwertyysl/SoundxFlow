@@ -64,6 +64,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import com.github.core.ui.LocalAppearance
 import com.github.soundxflow.LocalPlayerServiceBinder
+import com.github.soundxflow.service.PlayerService
 import com.github.soundxflow.R
 import com.github.soundxflow.models.LocalMenuState
 import com.github.soundxflow.ui.components.MusicBars

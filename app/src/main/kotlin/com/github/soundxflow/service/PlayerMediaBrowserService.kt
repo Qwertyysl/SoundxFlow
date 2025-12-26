@@ -1,5 +1,7 @@
 package com.github.soundxflow.service
 
+import com.github.soundxflow.service.PlayerBinder
+
 import android.content.ComponentName
 import android.content.ContentResolver
 import android.content.ServiceConnection
@@ -48,7 +50,7 @@ class PlayerMediaBrowserService : MediaBrowserService(), ServiceConnection {
     }
 
     override fun onServiceConnected(className: ComponentName, service: IBinder) {
-        if (service is PlayerService.Binder) {
+        if (service is PlayerBinder) {
             bound = true
             sessionToken = service.mediaSession.sessionToken
             service.mediaSession.setCallback(SessionCallback(service.player, service.cache))

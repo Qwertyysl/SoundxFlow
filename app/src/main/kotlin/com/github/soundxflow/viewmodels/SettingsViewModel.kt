@@ -9,8 +9,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.soundxflow.R
-import com.github.soundxflow.ui.common.newSearchLayoutEnabled // Import this
-import com.github.soundxflow.ui.common.setNewSearchLayoutEnabled // Import this
+import com.github.soundxflow.ui.common.newSearchLayoutEnabled
+import com.github.soundxflow.ui.common.setNewSearchLayoutEnabled
 import com.github.soundxflow.ui.navigation.SettingsDestinations
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -24,6 +24,7 @@ data class SettingOption(
 )
 
 data class SettingsSection(
+    val title: Int? = null,
     val options: List<SettingOption>
 )
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
@@ -63,25 +64,29 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         val menuStructure = listOf(
             // ... (Keep your Section 1, 2, 3) ...
             SettingsSection(
-                listOf(
+                title = R.string.general,
+                options = listOf(
                     SettingOption(title = R.string.appearance, icon = Icons.Default.ColorLens, screenId = SettingsDestinations.APPEARANCE),
                     SettingOption(title = R.string.player, icon = Icons.Default.PlayArrow, screenId = SettingsDestinations.PLAYER)
                 )
             ),
             SettingsSection(
-                listOf(
+                title = R.string.privacy,
+                options = listOf(
                     SettingOption(title = R.string.privacy, icon = Icons.Default.PrivacyTip, screenId = SettingsDestinations.PRIVACY)
                 )
             ),
             SettingsSection(
-                listOf(
+                title = R.string.data,
+                options = listOf(
                     SettingOption(title = R.string.backup_restore, icon = Icons.Default.Restore, screenId = SettingsDestinations.BACKUP),
                     SettingOption(title = R.string.database, icon = Icons.Default.Storage, screenId = SettingsDestinations.DATABASE)
                 )
             ),
             // Section 4: Advanced
             SettingsSection(
-                listOf(
+                title = R.string.more_settings,
+                options = listOf(
                     SettingOption(
                         title = R.string.more_settings,
                         iconRes = R.drawable.more_settings,
@@ -101,7 +106,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 )
             ),
             SettingsSection(
-                listOf(
+                title = R.string.about,
+                options = listOf(
                     SettingOption(title = R.string.about, icon = Icons.Default.Info, screenId = SettingsDestinations.ABOUT)
                 )
             )

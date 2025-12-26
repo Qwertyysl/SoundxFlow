@@ -26,6 +26,9 @@ object BackgroundStyles {
     const val ABSTRACT_2 = 2
     const val ABSTRACT_3 = 3
     const val ABSTRACT_4 = 4
+    const val ABSTRACT_5 = 5
+    const val ABSTRACT_6 = 6
+    const val MESH = 10
     const val CUSTOM_IMAGE = 99
 }
 
@@ -62,6 +65,15 @@ fun PlayerBackground(
                         )
                     }
                 }
+            }
+            BackgroundStyles.ABSTRACT_5, BackgroundStyles.ABSTRACT_6 -> {
+                ThemedLottieBackground(
+                    animationNumber = currentStyle,
+                    modifier = Modifier.matchParentSize()
+                )
+            }
+            BackgroundStyles.MESH -> {
+                MeshBackground(thumbnailUrl = thumbnailUrl)
             }
             else -> {
                 ThemedLottieBackground(

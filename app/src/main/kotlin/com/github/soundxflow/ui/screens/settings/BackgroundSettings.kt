@@ -39,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
@@ -161,10 +162,74 @@ fun BackgroundSettings(onBackClick: () -> Unit) {
             }
             TwoColumnRow {
                 BackgroundPreviewCard("Alpine Night", "lottie/bg4.lottie", currentStyle == BackgroundStyles.ABSTRACT_4) { context.preferences.edit { putInt(PLAYER_BACKGROUND_STYLE_KEY, BackgroundStyles.ABSTRACT_4) } }
-                Spacer(modifier = Modifier.weight(1f))
+                BackgroundPreviewCard("Ocean Flow", "lottie/bg5.lottie", currentStyle == BackgroundStyles.ABSTRACT_5) { context.preferences.edit { putInt(PLAYER_BACKGROUND_STYLE_KEY, BackgroundStyles.ABSTRACT_5) } }
+            }
+            TwoColumnRow {
+                BackgroundPreviewCard("Forest Mist", "lottie/bg6.lottie", currentStyle == BackgroundStyles.ABSTRACT_6) { context.preferences.edit { putInt(PLAYER_BACKGROUND_STYLE_KEY, BackgroundStyles.ABSTRACT_6) } }
+                MeshOptionCard("Mesh Gradient", currentStyle == BackgroundStyles.MESH) { context.preferences.edit { putInt(PLAYER_BACKGROUND_STYLE_KEY, BackgroundStyles.MESH) } }
             }
         }
         Spacer(modifier = Modifier.height(48.dp))
+    }
+}
+
+@Composable
+fun RowScope.MeshOptionCard(
+    title: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    val (colorPalette) = LocalAppearance.current
+
+    Column(
+        modifier = Modifier
+            .weight(1f)
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(0.6f)
+                .clip(RoundedCornerShape(16.dp))
+                .background(colorPalette.background3)
+                .border(
+                    width = if (selected) 2.dp else 0.dp,
+                    color = if (selected) colorPalette.accent else Color.Transparent,
+                    shape = RoundedCornerShape(16.dp)
+                )
+        ) {
+            // Static representation of mesh
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.linearGradient(
+                            colors = listOf(colorPalette.accent.copy(alpha = 0.3f), Color.Transparent, colorPalette.accent.copy(alpha = 0.1f))
+                        )
+                    )
+            )
+
+            if (selected) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .size(40.dp)
+                        .background(colorPalette.accent, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = null,
+                        tint = colorPalette.onAccent
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(text = title, style = MaterialTheme.typography.bodyMedium, color = if (selected) colorPalette.accent else colorPalette.text, maxLines = 1)
     }
 }
 

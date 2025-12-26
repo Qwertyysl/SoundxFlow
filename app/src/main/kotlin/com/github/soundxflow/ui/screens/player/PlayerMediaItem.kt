@@ -28,8 +28,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import com.github.core.ui.LocalAppearance
 import com.github.soundxflow.Database
 import com.github.soundxflow.LocalPlayerServiceBinder
+import com.github.soundxflow.service.PlayerService
 import com.github.soundxflow.ui.modifier.fadingEdge
 import com.github.soundxflow.utils.DisposableListener
 import kotlinx.coroutines.Dispatchers
@@ -65,6 +67,7 @@ fun PlayerMediaItem(
     )
 
     val mediaItem = currentItem ?: return
+    val (colorPalette) = LocalAppearance.current
 
     LaunchedEffect(mediaItem.mediaId) {
         withContext(Dispatchers.IO) {
@@ -91,7 +94,7 @@ fun PlayerMediaItem(
         // TITLE
         Text(
             text = mediaItem.mediaMetadata.title?.toString().orEmpty(),
-            color = MaterialTheme.colorScheme.onSurface,
+            color = colorPalette.text,
             modifier = Modifier.basicMarquee(),
             style = MaterialTheme.typography.titleMedium.copy(
                 fontWeight = FontWeight.ExtraBold
@@ -102,7 +105,7 @@ fun PlayerMediaItem(
         if (!albumYear.isNullOrEmpty()) {
             Text(
                 text = albumYear!!,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                color = colorPalette.textSecondary,
                 style = MaterialTheme.typography.labelMedium,
                 maxLines = 1
             )
@@ -124,7 +127,7 @@ fun PlayerMediaItem(
         ) {
             Text(
                 text = mediaItem.mediaMetadata.artist?.toString().orEmpty(),
-                color = MaterialTheme.colorScheme.onSurface,
+                color = colorPalette.text,
                 style = MaterialTheme.typography.bodyLarge,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis

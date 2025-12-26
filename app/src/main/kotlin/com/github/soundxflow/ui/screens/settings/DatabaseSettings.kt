@@ -32,6 +32,7 @@ import coil3.imageLoader
 import com.github.core.ui.LocalAppearance
 import com.github.soundxflow.Database
 import com.github.soundxflow.LocalPlayerServiceBinder
+import com.github.soundxflow.service.PlayerService
 import com.github.soundxflow.R
 import com.github.soundxflow.enums.CoilDiskCacheMaxSize
 import com.github.soundxflow.enums.ExoPlayerDiskCacheMaxSize

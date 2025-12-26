@@ -2,9 +2,12 @@ package com.github.soundxflow.azan
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.util.Log
 import android.media.MediaPlayer
@@ -18,23 +21,46 @@ import com.github.soundxflow.utils.isAtLeastAndroid8
 import com.github.soundxflow.utils.preferences
 import kotlinx.coroutines.*
 
+import androidx.core.content.edit
+import com.github.soundxflow.utils.isAzanPlayingKey
+
 class AzanService : Service() {
     private var mediaPlayer: MediaPlayer? = null
     private val scope = CoroutineScope(Dispatchers.Main + Job())
+    private var wasPlayingBeforeAzan = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val action = intent?.action
-        Log.d("AzanService", "onStartCommand with action: $action")
+        
+        if (action == "STOP_AZAN") {
+            stopAzan()
+            return START_NOT_STICKY
+        }
+
         if (action == "PLAY_AZAN") {
+            preferences.edit { putBoolean(isAzanPlayingKey, true) }
+            wasPlayingBeforeAzan = intent.getBooleanExtra("WAS_PLAYING", false)
             createNotificationChannel()
+            
+            val stopIntent = Intent(this, AzanService::class.java).apply {
+                this.action = "STOP_AZAN"
+            }
+            val stopPendingIntent = PendingIntent.getService(
+                this, 
+                0, 
+                stopIntent, 
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
             val notification = NotificationCompat.Builder(this, "azan_channel")
                 .setContentTitle("Azan")
                 .setContentText("Playing Azan...")
                 .setSmallIcon(R.drawable.app_icon)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .setOngoing(true)
+                .addAction(R.drawable.app_icon, "Stop", stopPendingIntent) // Replace app_icon with a stop icon if available
                 .build()
             
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -64,7 +90,6 @@ class AzanService : Service() {
 
     private fun playAzan() {
         val audioPath = preferences.getString(azanAudioPathKey, "")
-        Log.d("AzanService", "playAzan: audioPath=$audioPath")
         
         try {
             mediaPlayer?.release()
@@ -81,28 +106,46 @@ class AzanService : Service() {
                 setOnCompletionListener {
                     scope.launch {
                         delay(10000) // 10 seconds delay as requested
-                        resumePlayer()
+                        if (wasPlayingBeforeAzan) {
+                            resumePlayer()
+                        }
+                        preferences.edit { putBoolean(isAzanPlayingKey, false) }
                         stopForeground(STOP_FOREGROUND_REMOVE)
                         stopSelf()
                     }
                 }
             }
         } catch (e: Exception) {
-            Log.e("AzanService", "Error playing Azan", e)
             // Fallback for missing resource or error
             if (audioPath.isNullOrEmpty()) {
                  scope.launch {
                     delay(60000) // Simulate azan duration
-                    resumePlayer()
+                    if (wasPlayingBeforeAzan) {
+                        resumePlayer()
+                    }
+                    preferences.edit { putBoolean(isAzanPlayingKey, false) }
                     stopForeground(STOP_FOREGROUND_REMOVE)
                     stopSelf()
                 }
             } else {
-                resumePlayer()
+                if (wasPlayingBeforeAzan) {
+                    resumePlayer()
+                }
+                preferences.edit { putBoolean(isAzanPlayingKey, false) }
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
             }
         }
+    }
+
+    private fun stopAzan() {
+        preferences.edit { putBoolean(isAzanPlayingKey, false) }
+        mediaPlayer?.stop()
+        if (wasPlayingBeforeAzan) {
+            resumePlayer()
+        }
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()
     }
 
     private fun resumePlayer() {

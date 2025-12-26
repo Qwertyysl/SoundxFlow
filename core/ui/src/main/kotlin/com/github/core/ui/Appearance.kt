@@ -34,11 +34,12 @@ import kotlinx.parcelize.WriteWith
 data class Appearance(
     val colorPalette: ColorPalette,
     val typography: Typography,
-    val thumbnailShapeCorners: ParcelableDp
+    val thumbnailShapeCorners: ParcelableDp,
+    val designStyle: DesignStyle = DesignStyle.Classic
 ) : Parcelable {
     @IgnoredOnParcel
     val thumbnailShape = thumbnailShapeCorners.roundedShape
-    operator fun component4() = thumbnailShape
+    operator fun component5() = thumbnailShape
 }
 
 val LocalAppearance = staticCompositionLocalOf<Appearance> { error("No appearance provided") }
@@ -62,6 +63,7 @@ fun appearance(
     fontFamily: BuiltInFontFamily,
     applyFontPadding: Boolean,
     thumbnailRoundness: Dp,
+    designStyle: DesignStyle,
     isSystemInDarkTheme: Boolean = isSystemInDarkTheme()
 ): Appearance {
     val isDark = remember(mode, isSystemInDarkTheme) {
@@ -89,6 +91,7 @@ fun appearance(
         fontFamily,
         applyFontPadding,
         thumbnailRoundness,
+        designStyle,
         isDark = isDark
     ) {
         Appearance(
@@ -98,7 +101,8 @@ fun appearance(
                 fontFamily = fontFamily,
                 applyFontPadding = applyFontPadding
             ),
-            thumbnailShapeCorners = thumbnailRoundness
+            thumbnailShapeCorners = thumbnailRoundness,
+            designStyle = designStyle
         )
     }.value
 }

@@ -57,6 +57,7 @@ import com.github.innertube.requests.lyrics
 import com.github.kugou.KuGou
 import com.github.soundxflow.Database
 import com.github.soundxflow.LocalPlayerServiceBinder
+import com.github.soundxflow.service.PlayerService
 import com.github.soundxflow.R
 import com.github.soundxflow.models.LocalMenuState
 import com.github.soundxflow.models.Lyrics
@@ -79,6 +80,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 
+import com.github.core.ui.LocalAppearance
+import com.github.core.ui.DesignStyle
+
 @Composable
 fun Lyrics(
     mediaId: String,
@@ -99,6 +103,8 @@ fun Lyrics(
         val context = LocalContext.current
         val menuState = LocalMenuState.current
         val currentView = LocalView.current
+        val appearance = LocalAppearance.current
+        val isModern = appearance.designStyle == DesignStyle.Modern
 
         var isShowingSynchronizedLyrics by rememberPreference(isShowingSynchronizedLyricsKey, true)
 
@@ -329,7 +335,7 @@ fun Lyrics(
                         state = lazyListState,
                         userScrollEnabled = true, // Changed to true for Apple Music feel
                         contentPadding = PaddingValues(vertical = size / 2),
-                        horizontalAlignment = Alignment.Start, // Changed to start
+                        horizontalAlignment = if (isModern) Alignment.Start else Alignment.CenterHorizontally,
                         modifier = Modifier.verticalFadingEdge()
                     ) {
                         itemsIndexed(items = synchronizedLyrics.sentences) { index, sentence ->
@@ -339,7 +345,7 @@ fun Lyrics(
                                     MaterialTheme.typography.headlineMedium.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                                     else MaterialTheme.typography.headlineSmall.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Medium),
                                 color = Color.White,
-                                textAlign = TextAlign.Start,
+                                textAlign = if (isModern) TextAlign.Start else TextAlign.Center,
                                 modifier = Modifier
                                     .padding(vertical = 12.dp, horizontal = 24.dp)
                                     .alpha(if (index == synchronizedLyrics.index) 1F else 0.4f)

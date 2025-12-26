@@ -45,6 +45,8 @@ data class ColorPalette(
     val baseColor by lazy { if (isDark) Color(0xFF1E1E1E) else Color.White }
     @IgnoredOnParcel
     val boxColor by lazy { if (isDark) Color(0xFF1E1E1E) else Color.White  }
+    @IgnoredOnParcel
+    val surface by lazy { if (isDark) Color(0xFF1E1E1E) else Color.White }
     companion object
 }
 
