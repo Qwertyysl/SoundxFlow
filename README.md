@@ -48,18 +48,16 @@ An Android application for streaming music from YouTube Music.
 
 <div>
     <img src="./screenshots/screenshot_home.jpg" alt="Home" style="width: 30%;">
-    <img src="./screenshots/screenshot_player.png" alt="Player" style="width: 30%;">
-    <img src="./screenshots/screenshot_artist.png" alt="Artist" style="width: 30%;">
-    <img src="./screenshots/screenshot_songs.png" alt="Songs" style="width: 30%;">
-    <img src="./screenshots/screenshot_artists.png" alt="Artists" style="width: 30%;">
-    <img src="./screenshots/screenshot_albums.png" alt="Albums" style="width: 30%;">
+    <img src="./screenshots/screenshot_player.jpg" alt="Player" style="width: 30%;">
+    <img src="./screenshots/screenshot_artist.jpg" alt="Artist" style="width: 30%;">
+    <img src="./screenshots/screenshot_songs.jpg" alt="Songs" style="width: 30%;">
 </div>
 
 ## 📲 Installation
 
 [<img src="https://github.com/machiav3lli/oandbackupx/blob/034b226cea5c1b30eb4f6a6f313e4dadcbb0ece4/badge_github.png"
 alt="Get it on GitHub"
-height="80">](https://github.com/arunnechully/SoundxFlow/releases/latest)
+height="80">](https://github.com/qwertyysl/SoundxFlow/releases/latest)
 
 ## 🌟 Inspiration
 
@@ -69,6 +67,7 @@ height="80">](https://github.com/arunnechully/SoundxFlow/releases/latest)
 - [InnerTune](https://github.com/z-huang/InnerTune)
 - [OuterTune](https://github.com/OuterTune/OuterTune)
 - [Symphony](https://github.com/zyrouge/symphony)
+- [SoundPod](https://github.com/arunnechully/SoundPod)
 
 ## ℹ️ Disclaimer
 
