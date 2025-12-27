@@ -17,6 +17,8 @@ import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import com.github.niusic.R
 import com.github.niusic.utils.azanAudioPathKey
+import com.github.niusic.utils.azanQuietModeKey
+
 import com.github.niusic.utils.isAtLeastAndroid8
 import com.github.niusic.utils.preferences
 import kotlinx.coroutines.*
@@ -89,13 +91,25 @@ class AzanService : Service() {
     }
 
     private fun playAzan() {
+        val isQuietMode = preferences.getBoolean(azanQuietModeKey, false)
+        if (isQuietMode) {
+            scope.launch {
+                delay(300000)
+                if (wasPlayingBeforeAzan) resumePlayer()
+                preferences.edit { putBoolean(isAzanPlayingKey, false) }
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                stopSelf()
+            }
+            return
+        }
+
         val audioPath = preferences.getString(azanAudioPathKey, "")
         
         try {
             mediaPlayer?.release()
             mediaPlayer = MediaPlayer().apply {
                 if (audioPath.isNullOrEmpty()) {
-                    val assetFileDescriptor = resources.openRawResourceFd(com.github.niusic.R.raw.azan)
+                    val assetFileDescriptor = resources.openRawResourceFd(com.github.niusic.R.raw.azantv3)
                     setDataSource(assetFileDescriptor.fileDescriptor, assetFileDescriptor.startOffset, assetFileDescriptor.length)
                     assetFileDescriptor.close()
                 } else {

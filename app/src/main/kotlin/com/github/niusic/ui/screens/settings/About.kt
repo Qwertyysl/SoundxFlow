@@ -4,21 +4,30 @@ import android.content.Intent
 import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Coffee
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Update
 import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -35,6 +44,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
@@ -78,6 +88,8 @@ fun AboutSettings(
     var seamlessUpdateEnabled by remember { mutableStateOf(false) }
     var showPermissionDialog by remember { mutableStateOf(false) }
     var showAlertEnabled by rememberSaveable { mutableStateOf(true) }
+    var selectedDonationAmount by remember { mutableStateOf("5") }
+    var customDonationAmount by remember { mutableStateOf("") }
     val status = updateStatus
     BackHandler(onBack = onBackClick)
 
@@ -206,6 +218,81 @@ fun AboutSettings(
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = stringResource(id = R.string.buy_me_a_coffee),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+
+                SettingsCard {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = stringResource(id = R.string.buy_me_a_coffee_description),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            listOf("1", "5", "10").forEach { amount ->
+                                FilterChip(
+                                    selected = selectedDonationAmount == amount,
+                                    onClick = {
+                                        selectedDonationAmount = amount
+                                        customDonationAmount = ""
+                                    },
+                                    label = { Text("$$amount") }
+                                )
+                            }
+
+                            FilterChip(
+                                selected = selectedDonationAmount == "custom",
+                                onClick = { selectedDonationAmount = "custom" },
+                                label = { Text(stringResource(id = R.string.custom_amount)) }
+                            )
+                        }
+
+                        if (selectedDonationAmount == "custom") {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            OutlinedTextField(
+                                value = customDonationAmount,
+                                onValueChange = { if (it.all { char -> char.isDigit() || char == '.' }) customDonationAmount = it },
+                                label = { Text(stringResource(id = R.string.custom_amount)) },
+                                modifier = Modifier.fillMaxWidth(),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                prefix = { Text("$") },
+                                singleLine = true
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Button(
+                            onClick = {
+                                val amount = if (selectedDonationAmount == "custom") customDonationAmount else selectedDonationAmount
+                                if (amount.isNotEmpty()) {
+                                    val url = "https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=amiyeyeng2@gmail.com&currency_code=USD&amount=$amount"
+                                    uriHandler.openUri(url)
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        ) {
+                            Icon(Icons.Default.Coffee, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(stringResource(id = R.string.donate))
+                        }
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(16.dp))
 

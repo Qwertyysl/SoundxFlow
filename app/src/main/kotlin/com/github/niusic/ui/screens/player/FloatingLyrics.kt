@@ -24,6 +24,7 @@ import com.github.niusic.utils.rememberPreference
 import com.github.niusic.utils.isFloatingLyricsEnabledKey
 import com.github.niusic.utils.positionAndDurationState
 import com.github.kugou.KuGou
+import com.github.niusic.utils.floatingLyricsFontSizeKey
 
 @Composable
 fun FloatingLyrics(
@@ -31,8 +32,10 @@ fun FloatingLyrics(
     player: Player,
     modifier: Modifier = Modifier
 ) {
-    val isEnabled by rememberPreference(isFloatingLyricsEnabledKey, true) // Default to true for now
+    val isEnabled by rememberPreference(isFloatingLyricsEnabledKey, false)
     if (!isEnabled) return
+
+    val fontSize by rememberPreference(floatingLyricsFontSizeKey, 20)
 
     val lyricsFlow = remember(mediaId) { Database.lyrics(mediaId) }
     val lyrics by lyricsFlow.collectAsState(initial = null)
@@ -59,14 +62,7 @@ fun FloatingLyrics(
             .fillMaxWidth()
             .padding(bottom = 24.dp, start = 20.dp, end = 20.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        Color.Transparent,
-                        Color.Black.copy(alpha = 0.6f)
-                    )
-                )
-            )
+            .background(Color.Black.copy(alpha = 0.8f))
             .padding(12.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -81,8 +77,8 @@ fun FloatingLyrics(
                 text = text,
                 style = MaterialTheme.typography.titleLarge.copy(
                     fontWeight = FontWeight.ExtraBold,
-                    fontSize = 20.sp,
-                    lineHeight = 26.sp,
+                    fontSize = fontSize.sp,
+                    lineHeight = (fontSize * 1.3).sp,
                     letterSpacing = (-0.5).sp
                 ),
                 color = Color.White,

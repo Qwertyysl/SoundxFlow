@@ -32,19 +32,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Timer
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.neverEqualPolicy
-import androidx.compose.runtime.remember
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -58,8 +48,10 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
@@ -91,6 +83,8 @@ import com.github.niusic.utils.shuffleQueue
 import com.github.niusic.utils.toast
 import com.github.niusic.utils.trackLoopEnabledKey
 import com.github.niusic.utils.volumeBoosterEnabledKey
+import com.github.niusic.enums.MusicStylePreset
+import com.github.niusic.utils.musicStylePresetKey
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOf
 
@@ -99,18 +93,14 @@ fun AnimatedIconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     content: @Composable () -> Unit
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
-
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.7f else 1f,
-        animationSpec = spring(
-            dampingRatio = 0.5f,
-            stiffness = 50f
-        ),
-        label = "smooth-bounce-button"
+        targetValue = if (isPressed) 0.9f else 1f,
+        animationSpec = spring(dampingRatio = 0.5f),
+        label = "scale"
     )
 
     IconButton(
@@ -119,83 +109,67 @@ fun AnimatedIconButton(
             scaleX = scale
             scaleY = scale
         },
-        enabled = enabled,
         interactionSource = interactionSource,
+        enabled = enabled,
         content = content
     )
 }
-
 
 @Composable
 fun PlayPauseButton(
     playing: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    tint: Color? = null
 ) {
-    val (colorPalette) = LocalAppearance.current
+    val appearance = LocalAppearance.current
+    val colorPalette = appearance.colorPalette
+    val backgroundStyle by rememberPreference(PLAYER_BACKGROUND_STYLE_KEY, BackgroundStyles.DYNAMIC)
+    val isGlassTheme = appearance.designStyle == DesignStyle.Glass || backgroundStyle == BackgroundStyles.GLASS
+    val isDark = colorPalette.isDark
 
-    AnimatedIconButton(
-        onClick = onClick,
+    val contentColor = tint ?: colorPalette.iconColor
+    
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.85f else 1f,
+        animationSpec = spring(dampingRatio = 0.4f),
+        label = "scale"
+    )
+
+    Box(
         modifier = modifier
-            .semantics { contentDescription = if (playing) "Pause" else "Play" }
+            .size(64.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clip(CircleShape)
+            .then(
+                if (isGlassTheme) {
+                    Modifier.glassEffect(
+                        shape = CircleShape,
+                        alpha = 0.1f,
+                        borderColor = (if (isDark) Color.White else Color.Black).copy(alpha = 0.1f)
+                    )
+                } else {
+                    Modifier.background(colorPalette.accent.copy(alpha = 0.15f))
+                }
+            )
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            ),
+        contentAlignment = Alignment.Center
     ) {
         Icon(
             painter = painterResource(id = if (playing) R.drawable.pause else R.drawable.play),
-            contentDescription = null,
-            tint = colorPalette.iconColor,
-            modifier = Modifier
-                .size(30.dp)
+            contentDescription = if (playing) "Pause" else "Play",
+            tint = if (isGlassTheme) contentColor else colorPalette.accent,
+            modifier = Modifier.size(32.dp)
         )
-    }
-}
-
-@Composable
-fun ShufflePlayButtons(
-    onPlay: () -> Unit, onShuffle: () -> Unit, modifier: Modifier = Modifier
-) {
-    val (colorPalette) = LocalAppearance.current
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.End,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-
-        //shuffle button
-        Box(
-            modifier = Modifier
-                .size(32.dp)
-                .clip(shape = CircleShape)
-                .background(colorPalette.surface)
-                .clickable(onClick = onShuffle), contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                painter = painterResource(id = R.drawable.shuffle),
-                contentDescription = "Shuffle",
-                tint = colorPalette.iconColor,
-                modifier = Modifier.size(18.dp)
-
-            )
-        }
-
-        Spacer(modifier = Modifier.width(12.dp))
-
-        // Play button
-        Box(
-            modifier = Modifier
-                .size(32.dp)
-                .clip(shape = CircleShape)
-                .background(colorPalette.surface)
-                .clickable(onClick = onPlay), contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                painter = painterResource(id = R.drawable.play),
-                contentDescription = "Play",
-                tint = colorPalette.iconColor,
-                modifier = Modifier.size(18.dp)
-            )
-        }
     }
 }
 
@@ -204,11 +178,14 @@ fun ShufflePlayButtons(
 fun MiniPlayerControl(
     playing: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    tint: Color? = null
 ) {
     val binder = LocalPlayerServiceBinder.current
     val (colorPalette) = LocalAppearance.current
     val isAzanPlaying by rememberPreference(com.github.niusic.utils.isAzanPlayingKey, false)
+    
+    val contentColor = tint ?: colorPalette.iconColor
     
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -218,43 +195,42 @@ fun MiniPlayerControl(
         //skip back button
         AnimatedIconButton(
             onClick = { binder?.player?.forceSeekToPrevious() }, 
-            modifier = modifier.size(42.dp),
+            modifier = modifier.size(36.dp),
             enabled = !isAzanPlaying
         ) {
             Icon(
                 painter = painterResource(id = R.drawable.fast_backward),
                 contentDescription = null,
-                tint = if (isAzanPlaying) colorPalette.iconColor.copy(alpha = 0.5f) else colorPalette.iconColor,
-                modifier = Modifier.size(16.dp)
+                tint = if (isAzanPlaying) contentColor.copy(alpha = 0.5f) else contentColor,
+                modifier = Modifier.size(14.dp)
             )
         }
         //play or pause button
         AnimatedIconButton(
             onClick = onClick,
-            modifier = modifier
+            modifier = Modifier
+                .size(36.dp)
                 .semantics { contentDescription = if (playing) "Pause" else "Play" },
             enabled = !isAzanPlaying
         ) {
             Icon(
                 painter = painterResource(id = if (playing) R.drawable.pause else R.drawable.play),
                 contentDescription = null,
-                tint = if (isAzanPlaying) colorPalette.iconColor.copy(alpha = 0.5f) else colorPalette.iconColor,
-                modifier = Modifier
-                    .size(28.dp)
+                tint = if (isAzanPlaying) contentColor.copy(alpha = 0.5f) else contentColor,
+                modifier = Modifier.size(24.dp)
             )
         }
-
-        //skip forward button
+        //skip next button
         AnimatedIconButton(
-            onClick = { binder?.player?.forceSeekToNext() }, 
-            modifier = modifier.size(42.dp),
+            onClick = { binder?.player?.forceSeekToNext() },
+            modifier = modifier.size(36.dp),
             enabled = !isAzanPlaying
         ) {
             Icon(
                 painter = painterResource(id = R.drawable.fast_forward),
                 contentDescription = null,
-                tint = if (isAzanPlaying) colorPalette.iconColor.copy(alpha = 0.5f) else colorPalette.iconColor,
-                modifier = Modifier.size(16.dp)
+                tint = if (isAzanPlaying) contentColor.copy(alpha = 0.5f) else contentColor,
+                modifier = Modifier.size(14.dp)
             )
         }
     }
@@ -262,30 +238,29 @@ fun MiniPlayerControl(
 
 @Composable
 fun PlayerMiddleControl(
+    mediaId: String,
+    likedAt: Long?,
+    onGoToAlbum: (String) -> Unit,
+    onGoToArtist: (String) -> Unit,
     showPlaylist: Boolean,
     onTogglePlaylist: (Boolean) -> Unit,
-    mediaId: String,
-    onGoToAlbum: (String) -> Unit,
-    onGoToArtist: (String) -> Unit
+    textColor: Color? = null
 ) {
     val binder = LocalPlayerServiceBinder.current
     val appearance = LocalAppearance.current
     val colorPalette = appearance.colorPalette
+    val menuState = LocalMenuState.current
     val backgroundStyle by rememberPreference(PLAYER_BACKGROUND_STYLE_KEY, BackgroundStyles.DYNAMIC)
     val isGlassTheme = appearance.designStyle == DesignStyle.Glass || backgroundStyle == BackgroundStyles.GLASS
-    
-    val menuState = LocalMenuState.current
-    var likedAt by rememberSaveable { mutableStateOf<Long?>(null) }
 
-    LaunchedEffect(mediaId) {
-        Database.likedAt(mediaId).distinctUntilChanged().collect { likedAt = it }
-    }
+    val contentColor = textColor ?: colorPalette.iconColor
+
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 18.dp)
+            .padding(horizontal = 32.dp)
             .then(
                 if (isGlassTheme) {
                     Modifier.glassEffect(shape = RoundedCornerShape(24.dp), alpha = 0.1f)
@@ -299,7 +274,7 @@ fun PlayerMiddleControl(
             Icon(
                 painter = painterResource(id = R.drawable.playlist),
                 contentDescription = "Playlist",
-                tint = if (showPlaylist) colorPalette.accent else colorPalette.iconColor,
+                tint = if (showPlaylist) colorPalette.accent else contentColor,
                 modifier = Modifier.size(24.dp)
             )
         }
@@ -325,7 +300,7 @@ fun PlayerMiddleControl(
             Icon(
                 painter = painterResource(id = if (likedAt == null) R.drawable.heart_outline else R.drawable.heart),
                 contentDescription = "Like",
-                tint = (if (likedAt == null) colorPalette.iconColor else colorPalette.favoritesIcon),
+                tint = (if (likedAt == null) contentColor else colorPalette.favoritesIcon),
                 modifier = Modifier.size(24.dp)
             )
         }
@@ -346,7 +321,7 @@ fun PlayerMiddleControl(
             Icon(
                 painter = painterResource(id = R.drawable.add),
                 contentDescription = "Add",
-                tint = colorPalette.iconColor,
+                tint = contentColor,
                 modifier = Modifier.size(28.dp)
             )
         }
@@ -357,6 +332,7 @@ fun PlayerMiddleControl(
 fun PlayerControlBottom(
     shouldBePlaying: Boolean,
     onPlayPauseClick: () -> Unit,
+    textColor: Color? = null
 ) {
     val binder = LocalPlayerServiceBinder.current
     val player = binder?.player ?: return
@@ -364,6 +340,8 @@ fun PlayerControlBottom(
     val colorPalette = appearance.colorPalette
     val backgroundStyle by rememberPreference(PLAYER_BACKGROUND_STYLE_KEY, BackgroundStyles.DYNAMIC)
     val isGlassTheme = appearance.designStyle == DesignStyle.Glass || backgroundStyle == BackgroundStyles.GLASS
+
+    val contentColor = textColor ?: colorPalette.iconColor
 
     var trackLoopEnabled by rememberPreference(trackLoopEnabledKey, defaultValue = false)
     var queueLoopEnabled by rememberPreference(queueLoopEnabledKey, defaultValue = false)
@@ -384,16 +362,13 @@ fun PlayerControlBottom(
     ) {
         // Shuffle
         AnimatedIconButton(
-            onClick = {
-                player.shuffleModeEnabled = !player.shuffleModeEnabled
-                player.shuffleQueue()
-            },
+            onClick = { player.shuffleQueue() },
             enabled = !isAzanPlaying
         ) {
             Icon(
                 painter = painterResource(id = R.drawable.shuffle),
                 contentDescription = "Shuffle",
-                tint = if (isAzanPlaying) colorPalette.iconColor.copy(alpha = 0.5f) else colorPalette.iconColor,
+                tint = if (isAzanPlaying) contentColor.copy(alpha = 0.5f) else if (player.shuffleModeEnabled) colorPalette.accent else contentColor,
                 modifier = Modifier.size(24.dp)
             )
         }
@@ -406,7 +381,7 @@ fun PlayerControlBottom(
             Icon(
                 painter = painterResource(id = R.drawable.fast_backward),
                 contentDescription = "Previous",
-                tint = if (isAzanPlaying) colorPalette.iconColor.copy(alpha = 0.5f) else colorPalette.iconColor,
+                tint = if (isAzanPlaying) contentColor.copy(alpha = 0.5f) else contentColor,
                 modifier = Modifier.size(18.dp)
             )
         }
@@ -415,9 +390,8 @@ fun PlayerControlBottom(
         PlayPauseButton(
             playing = shouldBePlaying,
             onClick = onPlayPauseClick,
-            modifier = Modifier.alpha(if (isAzanPlaying) 0.5f else 1f).then(
-                if (isAzanPlaying) Modifier else Modifier // Placeholder
-            )
+            modifier = Modifier.alpha(if (isAzanPlaying) 0.5f else 1f),
+            tint = contentColor
         )
 
         // Next
@@ -428,7 +402,7 @@ fun PlayerControlBottom(
             Icon(
                 painter = painterResource(id = R.drawable.fast_forward),
                 contentDescription = "Next",
-                tint = if (isAzanPlaying) colorPalette.iconColor.copy(alpha = 0.5f) else colorPalette.iconColor,
+                tint = if (isAzanPlaying) contentColor.copy(alpha = 0.5f) else contentColor,
                 modifier = Modifier.size(18.dp)
             )
         }
@@ -461,7 +435,7 @@ fun PlayerControlBottom(
 
             Icon(
                 painter = icon,
-                tint = if (isAzanPlaying) colorPalette.iconColor.copy(alpha = 0.5f) else colorPalette.iconColor,
+                tint = if (isAzanPlaying) contentColor.copy(alpha = 0.5f) else if (repeatMode != Player.REPEAT_MODE_OFF) colorPalette.accent else contentColor,
                 contentDescription = null,
                 modifier = Modifier
                     .alpha(if (isAzanPlaying) 0.5f else alpha)
@@ -499,18 +473,32 @@ fun PlayerTopControl(
 
     var isShowingSleepTimerDialog by rememberSaveable { mutableStateOf(false) }
     var isShowingVolumeBoosterDialog by rememberSaveable { mutableStateOf(false) }
+    var isShowingMusicStyleDialog by rememberSaveable { mutableStateOf(false) }
     val sleepTimerMillisLeft by (binder.sleepTimerMillisLeft
         ?: flowOf(null))
         .collectAsState(initial = null)
 
     val volumeBoosterEnabled by rememberPreference(volumeBoosterEnabledKey, false)
+    var musicStylePreset by rememberPreference(musicStylePresetKey, MusicStylePreset.None)
+
+    val backgroundStyle by rememberPreference(PLAYER_BACKGROUND_STYLE_KEY, BackgroundStyles.DYNAMIC)
+    val isGlassTheme = LocalAppearance.current.designStyle == DesignStyle.Glass || backgroundStyle == BackgroundStyles.GLASS
+    val isDark = colorPalette.isDark
+
+    val buttonModifier = if (isGlassTheme) {
+        Modifier.glassEffect(
+            shape = CircleShape,
+            alpha = 0.1f,
+            borderColor = (if (isDark) Color.White else Color.Black).copy(alpha = 0.1f)
+        )
+    } else Modifier
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 15.dp, vertical = 24.dp)
+            .padding(horizontal = 15.dp, vertical = 16.dp)
     ) {
 
         IconButton(
@@ -525,99 +513,91 @@ fun PlayerTopControl(
             )
         }
 
-        Spacer(modifier = Modifier.weight(1f))
-
-        if (sleepTimerMillisLeft != null) {
-
-            Text(
-                text = formatTime(sleepTimerMillisLeft ?: 0L),
-                color =colorPalette.text,
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    fontWeight = FontWeight.Bold
-                ),
-                modifier = Modifier
-                    .clip(RoundedCornerShape(12.dp))
-                    .clickable {
-                        isShowingSleepTimerDialog = true
-                    }
-                    .padding(horizontal = 10.dp, vertical = 4.dp)
-            )
-
-        } else {
-
-            IconButton(
-                onClick = { isShowingSleepTimerDialog = true },
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Timer,
-                    tint = colorPalette.iconColor,
-                    contentDescription = null,
-                    modifier = Modifier.size(22.dp)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            if (sleepTimerMillisLeft != null) {
+                Text(
+                    text = formatTime(sleepTimerMillisLeft ?: 0L),
+                    color = colorPalette.text,
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
+                    modifier = buttonModifier
+                        .clip(CircleShape)
+                        .clickable {
+                            isShowingSleepTimerDialog = true
+                        }
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
                 )
-            }
-        }
-
-        IconButton(
-            onClick = { isShowingVolumeBoosterDialog = true }
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                tint = if (volumeBoosterEnabled) colorPalette.accent else colorPalette.iconColor,
-                contentDescription = null,
-                modifier = Modifier.size(22.dp)
-            )
-        }
-
-        IconButton(
-            onClick = {
-                val intent = Intent(AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL).apply {
-                    putExtra(AudioEffect.EXTRA_AUDIO_SESSION, binder.player.audioSessionId)
-                    putExtra(AudioEffect.EXTRA_PACKAGE_NAME, context.packageName)
-                    putExtra(AudioEffect.EXTRA_CONTENT_TYPE, AudioEffect.CONTENT_TYPE_MUSIC)
-                }
-
-                try {
-                    activityResultLauncher.launch(intent)
-                } catch (_: ActivityNotFoundException) {
-                    context.toast("Couldn't find an application to equalize audio")
-                }
-            }
-        ) {
-            Icon(
-                painter = painterResource(id = R.drawable.equalizer),
-                tint = colorPalette.iconColor,
-                contentDescription = null,
-                modifier = Modifier
-                    .size(18.dp)
-            )
-        }
-
-        IconButton(
-            onClick = {
-                menuState.display {
-                    BaseMediaItemMenu(
-                        onDismiss = menuState::hide,
-                        mediaItem = mediaItem,
-                        onStartRadio = {
-                            binder.stopRadio()
-                            binder.player.seamlessPlay(mediaItem)
-                            binder.setupRadio(NavigationEndpoint.Endpoint.Watch(videoId = mediaItem.mediaId))
-                        },
-                        onGoToAlbum = onGoToAlbum,
-                        onGoToArtist = onGoToArtist
+            } else {
+                IconButton(
+                    onClick = { isShowingSleepTimerDialog = true },
+                    modifier = buttonModifier.size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Timer,
+                        tint = colorPalette.iconColor,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.MoreVert,
-                tint = colorPalette.iconColor,
-                contentDescription = null,
-                modifier = Modifier
-                    .size(28.dp)
-            )
+
+            IconButton(
+                onClick = { isShowingMusicStyleDialog = true },
+                modifier = buttonModifier.size(36.dp)
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.equalizer),
+                    tint = if (musicStylePreset != MusicStylePreset.None) colorPalette.accent else colorPalette.iconColor,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+
+            IconButton(
+                onClick = { isShowingVolumeBoosterDialog = true },
+                modifier = buttonModifier.size(36.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                    tint = if (volumeBoosterEnabled) colorPalette.accent else colorPalette.iconColor,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            IconButton(
+                onClick = {
+                    menuState.display {
+                        BaseMediaItemMenu(
+                            onDismiss = menuState::hide,
+                            mediaItem = mediaItem,
+                            onStartRadio = {
+                                binder.stopRadio()
+                                binder.player.seamlessPlay(mediaItem)
+                                binder.setupRadio(NavigationEndpoint.Endpoint.Watch(videoId = mediaItem.mediaId))
+                            },
+                            onGoToAlbum = onGoToAlbum,
+                            onGoToArtist = onGoToArtist
+                        )
+                    }
+                },
+                modifier = buttonModifier.size(36.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.MoreVert,
+                    tint = colorPalette.iconColor,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(24.dp)
+                )
+            }
         }
     }
+
     if (isShowingSleepTimerDialog) {
         SleepTimer(
             sleepTimerMillisLeft = sleepTimerMillisLeft,
@@ -629,6 +609,71 @@ fun PlayerTopControl(
             onDismiss = { isShowingVolumeBoosterDialog = false }
         )
     }
+    if (isShowingMusicStyleDialog) {
+        MusicStyleDialog(
+            onDismiss = { isShowingMusicStyleDialog = false }
+        )
+    }
+}
+
+@Composable
+fun MusicStyleDialog(
+    onDismiss: () -> Unit
+) {
+    var musicStylePreset by rememberPreference(musicStylePresetKey, MusicStylePreset.None)
+    val appearance = LocalAppearance.current
+    val colorPalette = appearance.colorPalette
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(id = R.string.music_style)) },
+        text = {
+            Column {
+                Text(
+                    text = stringResource(id = R.string.music_style_description),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colorPalette.text.copy(alpha = 0.7f)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    MusicStylePreset.entries.chunked(2).forEach { rowPresets ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            rowPresets.forEach { preset ->
+                                FilterChip(
+                                    selected = musicStylePreset == preset,
+                                    onClick = { musicStylePreset = preset },
+                                    modifier = Modifier.weight(1f),
+                                    label = {
+                                        Text(
+                                            text = when (preset) {
+                                                MusicStylePreset.None -> stringResource(id = R.string.none)
+                                                MusicStylePreset.VocalBoost -> stringResource(id = R.string.vocal_boost)
+                                                MusicStylePreset.MusicBoost -> stringResource(id = R.string.music_boost)
+                                                MusicStylePreset.DolbyAtmos -> stringResource(id = R.string.dolby_atmos)
+                                            },
+                                            modifier = Modifier.fillMaxWidth(),
+                                            textAlign = TextAlign.Center
+                                        )
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(id = R.string.done))
+            }
+        }
+    )
 }
 
 fun formatTime(ms: Long): String {
@@ -671,72 +716,59 @@ private fun PlayerSeekBarDefault(
     val backgroundStyle by rememberPreference(PLAYER_BACKGROUND_STYLE_KEY, BackgroundStyles.DYNAMIC)
     val isGlassTheme = appearance.designStyle == DesignStyle.Glass || backgroundStyle == BackgroundStyles.GLASS
 
+    val seekBarColor = if (isGlassTheme) {
+        if (colorPalette.isDark) Color(0xFFCCCCCC) else Color.White
+    } else colorPalette.accent
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 18.dp)
+            .padding(horizontal = if (isGlassTheme) 24.dp else 18.dp)
             .then(
                 if (isGlassTheme) {
                     Modifier.glassEffect(shape = RoundedCornerShape(16.dp), alpha = 0.1f)
-                        .padding(vertical = 12.dp, horizontal = 12.dp)
+                        .padding(vertical = 8.dp, horizontal = 16.dp)
                 } else Modifier
             )
     ) {
 
         SeekBar(
             value = scrubbingPosition ?: position,
-            minimumValue = 0,
+            minimumValue = 0L,
             maximumValue = duration,
             onDragStart = { scrubbingPosition = it },
-            onDrag = { delta ->
-                scrubbingPosition = if (duration != C.TIME_UNSET) {
-                    scrubbingPosition?.plus(delta)?.coerceIn(0, duration)
-                } else null
-            },
+            onDrag = { delta -> scrubbingPosition = ((scrubbingPosition ?: position) + delta).coerceIn(0L, duration) },
             onDragEnd = {
-                scrubbingPosition?.let(binder.player::seekTo)
-                scrubbingPosition = null
+                scrubbingPosition?.let {
+                    binder.player.seekTo(it)
+                    scrubbingPosition = null
+                }
             },
-            color = colorPalette.accent,
-            backgroundColor = colorPalette.accent.copy(alpha = 0.2f),
-            shape = RoundedCornerShape(8.dp)
+            color = seekBarColor,
+            backgroundColor = (if (colorPalette.isDark) Color.White else Color.Black).copy(alpha = 0.1f)
         )
-
-        Spacer(Modifier.height(8.dp))
 
         Row(
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp)
         ) {
             Text(
                 text = formatAsDuration(scrubbingPosition ?: position),
-                color = colorPalette.text,
-                style = MaterialTheme.typography.labelMedium.copy(
-                    shadow = Shadow(
-                        color = Color.Black.copy(alpha = 0.3f),
-                        offset = Offset(1f, 1f),
-                        blurRadius = 2f
-                    )
-                ),
-                maxLines = 1
+                style = MaterialTheme.typography.labelSmall,
+                color = if (isGlassTheme) contentColor(colorPalette.isDark, (scrubbingPosition ?: position).toFloat() / duration.toFloat()) else colorPalette.textSecondary
             )
 
-            if (duration != C.TIME_UNSET) {
-                Text(
-                    text = formatAsDuration(duration),
-                    color = colorPalette.text,
-                    style = MaterialTheme.typography.labelMedium.copy(
-                        shadow = Shadow(
-                            color = Color.Black.copy(alpha = 0.3f),
-                            offset = Offset(1f, 1f),
-                            blurRadius = 2f
-                        )
-                    ),
-                    maxLines = 1
-                )
-            }
+            Text(
+                text = formatAsDuration(duration),
+                style = MaterialTheme.typography.labelSmall,
+                color = if (isGlassTheme) contentColor(colorPalette.isDark, 1f) else colorPalette.textSecondary
+            )
         }
     }
 }
 
+private fun contentColor(isDark: Boolean, fraction: Float): Color {
+    return if (isDark) Color.White.copy(alpha = 0.7f) else Color.Black.copy(alpha = 0.7f)
+}

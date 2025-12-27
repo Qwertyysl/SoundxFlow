@@ -29,6 +29,7 @@ import androidx.compose.material.icons.outlined.DownloadForOffline
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -36,6 +37,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,7 +54,11 @@ import com.github.niusic.LocalPlayerPadding
 import com.github.niusic.LocalPlayerServiceBinder
 import com.github.niusic.service.PlayerService
 import com.github.niusic.R
+import com.github.niusic.enums.MusicStylePreset
 import com.github.niusic.enums.QuickPicksSource
+import com.github.niusic.utils.musicStylePresetKey
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import com.github.niusic.models.LocalMenuState
 import com.github.niusic.query
 import com.github.niusic.ui.components.NonQueuedMediaItemMenu
@@ -60,11 +66,17 @@ import com.github.niusic.ui.components.ShimmerHost
 import com.github.niusic.ui.components.TextPlaceholder
 import com.github.niusic.ui.items.AlbumItem
 import com.github.niusic.ui.items.ArtistItem
+import com.github.niusic.ui.items.ItemContainer
 import com.github.niusic.ui.items.ItemPlaceholder
 import com.github.niusic.ui.items.ListItemPlaceholder
 import com.github.niusic.ui.items.LocalSongItem
 import com.github.niusic.ui.items.PlaylistItem
 import com.github.niusic.ui.items.SongItem
+import coil3.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.draw.clip
+import com.github.niusic.ui.styling.px
+import com.github.niusic.utils.thumbnail
 import com.github.niusic.ui.styling.Dimensions
 import com.github.niusic.utils.asMediaItem
 import com.github.niusic.utils.forcePlay
@@ -74,6 +86,7 @@ import com.github.niusic.utils.rememberPreference
 import com.github.niusic.viewmodels.home.QuickPicksViewModel
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("ConfigurationScreenWidthHeight")
 @ExperimentalFoundationApi
 @ExperimentalAnimationApi
@@ -91,6 +104,10 @@ fun QuickPicks(
     val viewModel: QuickPicksViewModel = viewModel()
     val quickPicksSource by rememberPreference(quickPicksSourceKey, QuickPicksSource.Trending)
     val scope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        viewModel.loadHistory()
+    }
 
     val songThumbnailSizeDp = Dimensions.thumbnails.song
     val itemSize = 108.dp + 2 * 8.dp
@@ -117,6 +134,42 @@ fun QuickPicks(
             .verticalScroll(rememberScrollState())
             .padding(top = 4.dp, bottom = 16.dp + playerPadding)
     ) {
+        if (viewModel.history.isNotEmpty()) {
+            Text(
+                text = stringResource(id = R.string.history),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = sectionTextModifier
+            )
+
+            LazyRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(viewModel.history) { song ->
+                    ItemContainer(
+                        modifier = Modifier.width(150.dp),
+                        title = song.title,
+                        subtitle = song.artistsText,
+                        onClick = {
+                            binder?.stopRadio()
+                            binder?.player?.forcePlay(song.asMediaItem)
+                        }
+                    ) {
+                        AsyncImage(
+                            model = song.thumbnailUrl?.thumbnail(150.dp.px),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.clip(MaterialTheme.shapes.large).fillMaxSize()
+                        )
+                    }
+                }
+            }
+        }
+
         val result = viewModel.relatedPageResult
         val related = result?.getOrNull()
         val error = result?.exceptionOrNull()

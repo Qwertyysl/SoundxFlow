@@ -103,35 +103,49 @@ fun ModernMiniPlayer(
         }
     }
     val positionAndDuration by player.positionAndDurationState()
-    val isAzanPlaying by rememberPreference(com.github.niusic.utils.isAzanPlayingKey, false)
     val mediaItem = nullableMediaItem ?: return
     val context = LocalContext.current
     val appearance = LocalAppearance.current
     val colorPalette = appearance.colorPalette
     val backgroundStyle by rememberPreference(PLAYER_BACKGROUND_STYLE_KEY, BackgroundStyles.DYNAMIC)
     val isGlassTheme = appearance.designStyle == DesignStyle.Glass || backgroundStyle == BackgroundStyles.GLASS
+    val isAzanPlaying by rememberPreference(com.github.niusic.utils.isAzanPlayingKey, false)
 
     var adaptiveContentColor by remember { mutableStateOf(colorPalette.text) }
     
-    LaunchedEffect(mediaItem.mediaMetadata.artworkUri) {
+    LaunchedEffect(mediaItem.mediaMetadata.artworkUri, appearance.designStyle, backgroundStyle) {
         val dominant = withContext(Dispatchers.IO) {
             extractDominantColor(context, mediaItem.mediaMetadata.artworkUri?.toString(), colorPalette.background1)
         }
-        adaptiveContentColor = if (dominant.luminance() > 0.5f) Color.Black else Color.White
+        
+        if (isGlassTheme) {
+            adaptiveContentColor = if (colorPalette.isDark) {
+                if (dominant.luminance() > 0.8f) Color(0xFFCCCCCC) else Color.White
+            } else {
+                if (dominant.luminance() < 0.3f) Color.Black.copy(alpha = 0.8f) else Color.Black
+            }
+        } else {
+            adaptiveContentColor = colorPalette.text
+        }
     }
 
-    val contentColor = if (isGlassTheme) adaptiveContentColor else colorPalette.text
+    val contentColor = adaptiveContentColor
     val title = if (isAzanPlaying) "AZAN" else mediaItem.mediaMetadata.title?.toString() ?: ""
     val artist = if (isAzanPlaying) "Playing Azan..." else mediaItem.mediaMetadata.artist?.toString() ?: ""
 
     val navigationBarsPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
+    val seekBarColor = if (isGlassTheme) {
+        if (colorPalette.isDark) Color(0xFFCCCCCC) else Color.White
+    } else colorPalette.accent
+
     // Modern look: Floating card style
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(80.dp + navigationBarsPadding) // Slightly taller
-            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .padding(bottom = navigationBarsPadding + 8.dp) // Added extra padding to avoid overlap
+            .height(80.dp) 
+            .padding(horizontal = 12.dp)
             .then(
                 if (isGlassTheme) {
                     Modifier.glassEffect(shape = RoundedCornerShape(16.dp), alpha = 0.15f)
@@ -149,8 +163,6 @@ fun ModernMiniPlayer(
             )
             .clickable(onClick = openPlayer)
     ) {
-        // Progress Indicator as background or bottom line? 
-        // Let's do a bottom line inside the card
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -166,7 +178,7 @@ fun ModernMiniPlayer(
 
                     if (barWidth > 0f) {
                         drawRect(
-                            color = colorPalette.accent, // Use accent color
+                            color = seekBarColor, 
                             topLeft = Offset(0f, size.height - 2.dp.toPx()),
                             size = Size(width = barWidth, height = 2.dp.toPx())
                         )
@@ -178,14 +190,13 @@ fun ModernMiniPlayer(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 12.dp)
-                    .padding(bottom = 2.dp) // Space for progress bar
+                    .padding(bottom = 2.dp)
             ) {
                 AsyncImage(
                     model = mediaItem.mediaMetadata.artworkUri.thumbnail(Dimensions.thumbnails.song.px),
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
-                        .clip(CircleShape) // Circular artwork for Modern look? Or Rounded? Let's go Rounded.
                         .clip(RoundedCornerShape(8.dp))
                         .size(48.dp),
                     placeholder = painterResource(id = R.drawable.app_icon),
@@ -202,7 +213,7 @@ fun ModernMiniPlayer(
                         text = title,
                         style = MaterialTheme.typography.bodyMedium.copy(
                             shadow = if (isGlassTheme) Shadow(
-                                color = Color.Black.copy(alpha = 0.3f),
+                                color = if (contentColor.luminance() > 0.5f) Color.Black.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.3f),
                                 offset = Offset(1f, 1f),
                                 blurRadius = 2f
                             ) else null
@@ -216,7 +227,7 @@ fun ModernMiniPlayer(
                         text = artist,
                         style = MaterialTheme.typography.bodySmall.copy(
                             shadow = if (isGlassTheme) Shadow(
-                                color = if (contentColor == Color.White) Color.Black.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.3f),
+                                color = if (contentColor.luminance() > 0.5f) Color.Black.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.3f),
                                 offset = Offset(1f, 1f),
                                 blurRadius = 2f
                             ) else null
@@ -231,26 +242,26 @@ fun ModernMiniPlayer(
                 // Controls Row
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     // Previous
                     IconButton(
                         onClick = { player.forceSeekToPrevious() },
-                        modifier = Modifier.size(32.dp),
+                        modifier = Modifier.size(30.dp),
                         enabled = !isAzanPlaying
                     ) {
                         Icon(
                             painter = painterResource(id = R.drawable.play_skip_back),
                             contentDescription = "Previous",
                             tint = if (isAzanPlaying) contentColor.copy(alpha = 0.5f) else contentColor,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(18.dp)
                         )
                     }
 
                     // Play/Pause Button
                     Box(
                         modifier = Modifier
-                            .size(40.dp)
+                            .size(32.dp)
                             .clip(CircleShape)
                             .background(if (isAzanPlaying) colorPalette.accent.copy(alpha = 0.05f) else colorPalette.accent.copy(alpha = 0.1f))
                             .clickable(enabled = !isAzanPlaying) {
@@ -270,21 +281,21 @@ fun ModernMiniPlayer(
                             painter = painterResource(id = if (shouldBePlaying) R.drawable.pause else R.drawable.play),
                             contentDescription = if (shouldBePlaying) "Pause" else "Play",
                             tint = if (isAzanPlaying) colorPalette.accent.copy(alpha = 0.5f) else colorPalette.accent,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(20.dp)
                         )
                     }
 
                     // Next
                     IconButton(
                         onClick = { player.forceSeekToNext() },
-                        modifier = Modifier.size(32.dp),
+                        modifier = Modifier.size(30.dp),
                         enabled = !isAzanPlaying
                     ) {
                         Icon(
                             painter = painterResource(id = R.drawable.play_skip_forward),
                             contentDescription = "Next",
                             tint = if (isAzanPlaying) contentColor.copy(alpha = 0.5f) else contentColor,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(18.dp)
                         )
                     }
                 }
@@ -292,4 +303,3 @@ fun ModernMiniPlayer(
         }
     }
 }
-

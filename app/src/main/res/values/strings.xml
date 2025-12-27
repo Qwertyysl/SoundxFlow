@@ -77,7 +77,7 @@
     <string name="remove_from_playlist">Remove from playlist</string>
     <string name="github" translatable="false">GitHub</string>
     <string name="shuffle">Shuffle</string>
-    <string name="quick_picks">Quick picks</string>
+    <string name="quick_picks">Suggested for you</string>
     <string name="view_all">View all</string>
     <string name="play_time">Play time</string>
     <string name="title">Title</string>
@@ -250,4 +250,18 @@
     <string name="no_search_history">No recent searches</string>
     <string name="tracks">Tracks</string>
     <string name="data">Data</string>
+    <string name="lyrics_font_size">Lyrics Font Size</string>
+    <string name="floating_lyrics_font_size">Floating Lyrics Font Size</string>
+    <string name="lyrics_preview">Lyrics Preview</string>
+    <string name="sample_lyrics">This is a preview of the lyrics font size.</string>
+    <string name="buy_me_a_coffee">Buy me a coffee</string>
+    <string name="buy_me_a_coffee_description">Support the development of Niusic</string>
+    <string name="donate">Donate</string>
+    <string name="custom_amount">Custom amount</string>
+    <string name="music_style">Music Style</string>
+    <string name="music_style_description">Select an audio preset to enhance your listening experience</string>
+    <string name="vocal_boost">Vocal</string>
+    <string name="music_boost">Music</string>
+    <string name="dolby_atmos">Dolby</string>
+    <string name="none">None</string>
 </resources>

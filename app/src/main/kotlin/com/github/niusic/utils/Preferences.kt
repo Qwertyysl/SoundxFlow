@@ -46,6 +46,7 @@ const val isLockscreenLyricsEnabledKey = "isLockscreenLyricsEnabled"
 const val azanReminderEnabledKey = "azanReminderEnabled"
 const val azanLocationKey = "azanLocation"
 const val azanAudioPathKey = "azanAudioPath"
+const val azanQuietModeKey = "azanQuietMode"
 const val prayerTimesTodayKey = "prayerTimesToday"
 
 const val appTheme = "appTheme"
@@ -55,6 +56,12 @@ const val navigationLabelsVisibilityKey = "navigationLabelsVisibility"
 const val listGesturesEnabledKey = "listGesturesEnabled"
 const val playerGesturesEnabledKey = "songGesturesEnabled"
 const val miniplayerGesturesEnabledKey = "miniplayerGesturesEnabled"
+
+const val musicStylePresetKey = "musicStylePreset"
+const val lastPlayedPlaylistIdKey = "lastPlayedPlaylistId"
+
+const val lyricsFontSizeKey = "lyricsFontSize"
+const val floatingLyricsFontSizeKey = "floatingLyricsFontSize"
 
 const val isAzanPlayingKey = "isAzanPlaying"
 

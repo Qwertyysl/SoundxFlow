@@ -1,5 +1,6 @@
 package com.github.innertube.models
 
+import com.github.innertube.Innertube
 import java.util.Locale
 
 class YouTubeClient(
@@ -12,7 +13,7 @@ class YouTubeClient(
 ) {
     fun toContext(
         localized: Boolean = true,
-        visitorData: String? = null
+        visitorData: String? = Innertube.visitorData
     ) = Context(
         client = Context.Client(
             clientName = clientName,

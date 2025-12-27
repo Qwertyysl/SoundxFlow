@@ -49,6 +49,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.media3.common.C
 import androidx.media3.common.MediaMetadata
 import com.valentinilk.shimmer.shimmer
@@ -75,6 +76,7 @@ import com.github.niusic.utils.isShowingSynchronizedLyricsKey
 import com.github.niusic.utils.rememberPreference
 import com.github.niusic.utils.toast
 import com.github.niusic.utils.verticalFadingEdge
+import com.github.niusic.utils.lyricsFontSizeKey
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -105,6 +107,8 @@ fun Lyrics(
         val currentView = LocalView.current
         val appearance = LocalAppearance.current
         val isModern = appearance.designStyle == DesignStyle.Modern
+
+        val lyricsFontSize by rememberPreference(lyricsFontSizeKey, 20)
 
         var isShowingSynchronizedLyrics by rememberPreference(isShowingSynchronizedLyricsKey, true)
 
@@ -252,7 +256,7 @@ fun Lyrics(
             modifier = Modifier
                 .clickable(onClick = onDismiss)
                 .fillMaxSize()
-                .background(Color.Black.copy(0.6f)) // Darkened overlay for better lyric visibility
+                .background(Color.Black.copy(0.85f)) // Darkened overlay for better lyric visibility
         ) {
             AnimatedVisibility(
                 visible = isError && text == null,
@@ -342,8 +346,14 @@ fun Lyrics(
                             Text(
                                 text = sentence.second,
                                 style = if (index == synchronizedLyrics.index) 
-                                    MaterialTheme.typography.headlineMedium.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
-                                    else MaterialTheme.typography.headlineSmall.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Medium),
+                                    MaterialTheme.typography.headlineMedium.copy(
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                        fontSize = (lyricsFontSize + 4).sp
+                                    )
+                                    else MaterialTheme.typography.headlineSmall.copy(
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
+                                        fontSize = lyricsFontSize.sp
+                                    ),
                                 color = Color.White,
                                 textAlign = if (isModern) TextAlign.Start else TextAlign.Center,
                                 modifier = Modifier
@@ -358,7 +368,7 @@ fun Lyrics(
                 } else {
                     Text(
                         text = text,
-                        style = MaterialTheme.typography.bodyLarge,
+                        style = MaterialTheme.typography.bodyLarge.copy(fontSize = lyricsFontSize.sp),
                         color = Color.White,
                         textAlign = TextAlign.Center,
                         modifier = Modifier

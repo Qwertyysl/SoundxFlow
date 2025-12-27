@@ -6,6 +6,9 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
@@ -19,6 +22,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -36,6 +40,7 @@ import com.github.niusic.LocalPlayerServiceBinder
 import com.github.niusic.service.PlayerService
 import com.github.niusic.ui.styling.Dimensions
 import com.github.niusic.utils.*
+import com.github.niusic.ui.appearance.extractDominantColor
 import android.media.audiofx.AudioEffect
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -49,6 +54,8 @@ import com.github.innertube.models.NavigationEndpoint
 import com.github.niusic.models.Song
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import com.github.niusic.enums.MusicStylePreset
+import com.github.niusic.utils.musicStylePresetKey
 import com.github.niusic.utils.toast
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -65,6 +72,7 @@ import com.github.niusic.ui.components.TooltipIconButton
 import com.github.niusic.R
 import com.github.innertube.requests.lyrics
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import com.github.niusic.utils.forceSeekToNext
 import com.github.niusic.utils.forceSeekToPrevious
 
@@ -198,110 +206,159 @@ fun ModernPlayer(
     
     val positionAndDuration by player.positionAndDurationState()
     val isAzanPlaying by rememberPreference(isAzanPlayingKey, false)
+    val context = LocalContext.current
+    
+    var adaptiveContentColor by remember { mutableStateOf(colorPalette.text) }
+    
+    LaunchedEffect(mediaItem.mediaMetadata.artworkUri, appearance.designStyle, backgroundStyle) {
+        val dominant = withContext(Dispatchers.IO) {
+            extractDominantColor(context, mediaItem.mediaMetadata.artworkUri?.toString(), colorPalette.background1)
+        }
+        
+        if (isGlassTheme) {
+            adaptiveContentColor = if (colorPalette.isDark) {
+                if (dominant.luminance() > 0.8f) Color(0xFFCCCCCC) else Color.White
+            } else {
+                if (dominant.luminance() < 0.3f) Color.Black.copy(alpha = 0.8f) else Color.Black
+            }
+        } else {
+            adaptiveContentColor = colorPalette.text
+        }
+    }
+
+    val contentColor = adaptiveContentColor
+    val contentColorSecondary = contentColor.copy(alpha = 0.7f)
     
     var showPlaylist by remember { mutableStateOf(false) }
     var showLyrics by rememberSaveable { mutableStateOf(false) }
+    var fullScreenLyrics by remember { mutableStateOf(false) }
 
     val activityResultLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { }
-    val context = LocalContext.current
     val sleepTimerMillisLeft by (binder.sleepTimerMillisLeft ?: flowOf(null)).collectAsState(initial = null)
     var isShowingSleepTimerDialog by rememberSaveable { mutableStateOf(false) }
+    var isShowingVolumeBoosterDialog by rememberSaveable { mutableStateOf(false) }
+    var isShowingMusicStyleDialog by rememberSaveable { mutableStateOf(false) }
     val volumeBoosterEnabled by rememberPreference(volumeBoosterEnabledKey, false)
+    var musicStylePreset by rememberPreference(musicStylePresetKey, MusicStylePreset.None)
+
+    val isDark = colorPalette.isDark
+    val buttonModifier = if (isGlassTheme) {
+        Modifier.glassEffect(
+            shape = CircleShape,
+            alpha = 0.1f,
+            borderColor = (if (isDark) Color.White else Color.Black).copy(alpha = 0.1f)
+        )
+    } else Modifier
 
     var trackLoopEnabled by rememberPreference(trackLoopEnabledKey, defaultValue = false)
     var queueLoopEnabled by rememberPreference(queueLoopEnabledKey, defaultValue = false)
     var likedAt by rememberSaveable { mutableStateOf<Long?>(null) }
-    var isShowingVolumeBoosterDialog by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(mediaItem.mediaId) {
         Database.likedAt(mediaItem.mediaId).collect { likedAt = it }
     }
 
-    BackHandler(enabled = showPlaylist || showLyrics) {
-        if (showPlaylist) showPlaylist = false
+    BackHandler(enabled = showPlaylist || showLyrics || fullScreenLyrics) {
+        if (fullScreenLyrics) fullScreenLyrics = false
+        else if (showPlaylist) showPlaylist = false
         else if (showLyrics) showLyrics = false
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(WindowInsets.systemBars.asPaddingValues())
-            .padding(horizontal = 24.dp)
-    ) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(WindowInsets.systemBars.asPaddingValues())
+                .padding(horizontal = 24.dp)
+                .verticalScroll(rememberScrollState())
+        ) {
         // Top Bar
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            IconButton(onClick = {
-                if (showLyrics) showLyrics = false
-                else if (showPlaylist) showPlaylist = false
-                else onMinimize()
-            }) {
+            IconButton(
+                onClick = {
+                    if (showLyrics) showLyrics = false
+                    else if (showPlaylist) showPlaylist = false
+                    else onMinimize()
+                }
+            ) {
                 Icon(
                     imageVector = Icons.Rounded.KeyboardArrowDown,
                     contentDescription = "Minimize",
-                    tint = colorPalette.text,
+                    tint = contentColor,
                     modifier = Modifier.size(32.dp)
                 )
             }
             
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Spacer(modifier = Modifier.weight(1f))
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 if (sleepTimerMillisLeft != null) {
                     Text(
                         text = formatTime(sleepTimerMillisLeft ?: 0L),
-                        color = colorPalette.text,
+                        color = contentColor,
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
+                        modifier = buttonModifier
+                            .clip(CircleShape)
                             .clickable { isShowingSleepTimerDialog = true }
-                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
                     )
                 } else {
-                    IconButton(onClick = { isShowingSleepTimerDialog = true }) {
-                        Icon(Icons.Outlined.Timer, tint = colorPalette.text, contentDescription = null, modifier = Modifier.size(22.dp))
+                    IconButton(
+                        onClick = { isShowingSleepTimerDialog = true },
+                        modifier = buttonModifier.size(36.dp)
+                    ) {
+                        Icon(Icons.Outlined.Timer, tint = contentColor, contentDescription = null, modifier = Modifier.size(20.dp))
                     }
                 }
 
-                IconButton(onClick = {
-                    val intent = Intent(AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL).apply {
-                        putExtra(AudioEffect.EXTRA_AUDIO_SESSION, player.audioSessionId)
-                        putExtra(AudioEffect.EXTRA_PACKAGE_NAME, context.packageName)
-                        putExtra(AudioEffect.EXTRA_CONTENT_TYPE, AudioEffect.CONTENT_TYPE_MUSIC)
-                    }
-                    try { activityResultLauncher.launch(intent) } catch (_: ActivityNotFoundException) { context.toast("Couldn't find an application to equalize audio") }
-                }) {
-                    Icon(painter = painterResource(id = R.drawable.equalizer), tint = colorPalette.text, contentDescription = null, modifier = Modifier.size(18.dp))
+                IconButton(
+                    onClick = { isShowingMusicStyleDialog = true },
+                    modifier = buttonModifier.size(36.dp)
+                ) {
+                    Icon(painter = painterResource(id = R.drawable.equalizer), tint = if (musicStylePreset != MusicStylePreset.None) colorPalette.accent else contentColor, contentDescription = null, modifier = Modifier.size(18.dp))
                 }
 
-                IconButton(onClick = { isShowingVolumeBoosterDialog = true }) {
-                    Icon(imageVector = Icons.AutoMirrored.Filled.VolumeUp, tint = if (volumeBoosterEnabled) colorPalette.accent else colorPalette.text, contentDescription = null, modifier = Modifier.size(22.dp))
+                IconButton(
+                    onClick = { isShowingVolumeBoosterDialog = true },
+                    modifier = buttonModifier.size(36.dp)
+                ) {
+                    Icon(imageVector = Icons.AutoMirrored.Filled.VolumeUp, tint = if (volumeBoosterEnabled) colorPalette.accent else contentColor, contentDescription = null, modifier = Modifier.size(20.dp))
                 }
-            }
 
-            IconButton(onClick = {
-                menuState.display {
-                    BaseMediaItemMenu(
-                        onDismiss = menuState::hide,
-                        mediaItem = mediaItem,
-                        onStartRadio = {
-                            binder.stopRadio()
-                            binder.player.seamlessPlay(mediaItem)
-                            binder.setupRadio(NavigationEndpoint.Endpoint.Watch(videoId = mediaItem.mediaId))
-                        },
-                        onGoToAlbum = onGoToAlbum,
-                        onGoToArtist = onGoToArtist
+                IconButton(
+                    onClick = {
+                        menuState.display {
+                            BaseMediaItemMenu(
+                                onDismiss = menuState::hide,
+                                mediaItem = mediaItem,
+                                onStartRadio = {
+                                    binder.stopRadio()
+                                    binder.player.seamlessPlay(mediaItem)
+                                    binder.setupRadio(NavigationEndpoint.Endpoint.Watch(videoId = mediaItem.mediaId))
+                                },
+                                onGoToAlbum = onGoToAlbum,
+                                onGoToArtist = onGoToArtist
+                            )
+                        }
+                    },
+                    modifier = buttonModifier.size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.MoreVert,
+                        contentDescription = "More",
+                        tint = contentColor,
+                        modifier = Modifier.size(24.dp)
                     )
                 }
-            }) {
-                Icon(
-                    imageVector = Icons.Rounded.MoreVert,
-                    contentDescription = "More",
-                    tint = colorPalette.text
-                )
             }
         }
 
@@ -311,12 +368,12 @@ fun ModernPlayer(
             text = if (isAzanPlaying) "AZAN" else "NOW PLAYING",
             style = MaterialTheme.typography.labelMedium.copy(
                 shadow = Shadow(
-                    color = Color.Black.copy(alpha = 0.3f),
+                    color = (if (contentColor.luminance() > 0.5f) Color.Black else Color.White).copy(alpha = 0.3f),
                     offset = Offset(1f, 1f),
                     blurRadius = 2f
                 )
             ),
-            color = if (isAzanPlaying) colorPalette.accent else colorPalette.textSecondary,
+            color = if (isAzanPlaying) colorPalette.accent else contentColorSecondary,
             fontWeight = FontWeight.Bold,
             letterSpacing = 2.sp,
             modifier = Modifier.align(Alignment.CenterHorizontally)
@@ -328,7 +385,7 @@ fun ModernPlayer(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f)
+                .padding(vertical = 16.dp)
         ) {
             AnimatedContent(
                 targetState = if (showPlaylist) 1 else if (showLyrics) 2 else 0,
@@ -346,7 +403,7 @@ fun ModernPlayer(
                                 onClick = { showPlaylist = false },
                                 modifier = Modifier.align(Alignment.CenterHorizontally).padding(bottom = 16.dp)
                             ) {
-                                Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = "Close Playlist", tint = colorPalette.text, modifier = Modifier.size(32.dp))
+                                Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = "Close Playlist", tint = contentColor, modifier = Modifier.size(32.dp))
                             }
                         }
                     }
@@ -361,15 +418,15 @@ fun ModernPlayer(
                                     size = 400.dp,
                                     mediaMetadataProvider = mediaItem::mediaMetadata,
                                     durationProvider = player::getDuration,
-                                    fullScreenLyrics = true,
-                                    toggleFullScreenLyrics = {}
+                                    fullScreenLyrics = false,
+                                    toggleFullScreenLyrics = { fullScreenLyrics = true }
                                 )
                             }
                             IconButton(
                                 onClick = { showLyrics = false },
                                 modifier = Modifier.padding(bottom = 16.dp)
                             ) {
-                                Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = "Close Lyrics", tint = colorPalette.text, modifier = Modifier.size(32.dp))
+                                Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = "Close Lyrics", tint = contentColor, modifier = Modifier.size(32.dp))
                             }
                         }
                     }
@@ -396,15 +453,19 @@ fun ModernPlayer(
                                 )
                             }
                             
-                            Spacer(modifier = Modifier.weight(1f))
+                            Spacer(modifier = Modifier.height(16.dp))
                             
-                            PlayerMediaItem(onGoToArtist = { 
-                                mediaItem.mediaMetadata.extras?.getStringArrayList("artistIds")?.firstOrNull()?.let { 
-                                    onGoToArtist(it) 
-                                }
-                            })
+                            PlayerMediaItem(
+                                onGoToArtist = { 
+                                    mediaItem.mediaMetadata.extras?.getStringArrayList("artistIds")?.firstOrNull()?.let { 
+                                        onGoToArtist(it) 
+                                    }
+                                },
+                                textColor = contentColor,
+                                secondaryTextColor = contentColorSecondary
+                            )
 
-                            Spacer(modifier = Modifier.weight(1f))
+                            Spacer(modifier = Modifier.height(16.dp))
                         }
                     }
                 }
@@ -419,44 +480,53 @@ fun ModernPlayer(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = { showPlaylist = !showPlaylist }) {
+            IconButton(
+                onClick = { showPlaylist = !showPlaylist },
+                modifier = buttonModifier
+            ) {
                 Icon(
                     painter = painterResource(id = R.drawable.playlist),
                     contentDescription = "Playlist",
-                    tint = if (showPlaylist) colorPalette.accent else colorPalette.textSecondary,
+                    tint = if (showPlaylist) colorPalette.accent else contentColorSecondary,
                     modifier = Modifier.size(24.dp)
                 )
             }
             
-            IconButton(onClick = {
-                query {
-                    if (Database.like(mediaItem.mediaId, if (likedAt == null) System.currentTimeMillis() else null) == 0) {
-                        Database.insert(mediaItem, Song::toggleLike)
+            IconButton(
+                onClick = {
+                    query {
+                        if (Database.like(mediaItem.mediaId, if (likedAt == null) System.currentTimeMillis() else null) == 0) {
+                            Database.insert(mediaItem, Song::toggleLike)
+                        }
                     }
-                }
-            }) {
+                },
+                modifier = buttonModifier
+            ) {
                 Icon(
                     painter = painterResource(id = if (likedAt == null) R.drawable.heart_outline else R.drawable.heart),
                     contentDescription = "Like",
-                    tint = if (likedAt == null) colorPalette.textSecondary else colorPalette.favoritesIcon,
+                    tint = if (likedAt == null) contentColorSecondary else colorPalette.favoritesIcon,
                     modifier = Modifier.size(28.dp)
                 )
             }
 
-            IconButton(onClick = {
-                menuState.display {
-                    BaseMediaItemMenu(
-                        onDismiss = menuState::hide,
-                        mediaItem = mediaItem,
-                        onGoToAlbum = onGoToAlbum,
-                        onGoToArtist = onGoToArtist
-                    )
-                }
-            }) {
+            IconButton(
+                onClick = {
+                    menuState.display {
+                        BaseMediaItemMenu(
+                            onDismiss = menuState::hide,
+                            mediaItem = mediaItem,
+                            onGoToAlbum = onGoToAlbum,
+                            onGoToArtist = onGoToArtist
+                        )
+                    }
+                },
+                modifier = buttonModifier
+            ) {
                 Icon(
                     painter = painterResource(id = R.drawable.add),
                     contentDescription = "Add",
-                    tint = colorPalette.textSecondary,
+                    tint = contentColorSecondary,
                     modifier = Modifier.size(28.dp)
                 )
             }
@@ -486,8 +556,8 @@ fun ModernPlayer(
                 Icon(
                     painter = painterResource(id = R.drawable.shuffle),
                     contentDescription = "Shuffle",
-                    tint = if (isAzanPlaying) colorPalette.textSecondary.copy(alpha = 0.5f) 
-                           else if (player.shuffleModeEnabled) colorPalette.accent else colorPalette.textSecondary
+                    tint = if (isAzanPlaying) contentColorSecondary.copy(alpha = 0.5f) 
+                           else if (player.shuffleModeEnabled) colorPalette.accent else contentColorSecondary
                 )
             }
 
@@ -495,7 +565,7 @@ fun ModernPlayer(
                 Icon(
                     painter = painterResource(id = R.drawable.play_skip_back),
                     contentDescription = "Previous",
-                    tint = if (isAzanPlaying) colorPalette.text.copy(alpha = 0.5f) else colorPalette.text,
+                    tint = if (isAzanPlaying) contentColor.copy(alpha = 0.5f) else contentColor,
                     modifier = Modifier.size(32.dp)
                 )
             }
@@ -529,7 +599,7 @@ fun ModernPlayer(
                 Icon(
                     painter = painterResource(id = R.drawable.play_skip_forward),
                     contentDescription = "Next",
-                    tint = if (isAzanPlaying) colorPalette.text.copy(alpha = 0.5f) else colorPalette.text,
+                    tint = if (isAzanPlaying) contentColor.copy(alpha = 0.5f) else contentColor,
                     modifier = Modifier.size(32.dp)
                 )
             }
@@ -557,13 +627,27 @@ fun ModernPlayer(
                 Icon(
                     painter = icon,
                     contentDescription = "Repeat",
-                    tint = if (isAzanPlaying) colorPalette.textSecondary.copy(alpha = 0.5f) 
-                           else if (repeatMode != Player.REPEAT_MODE_OFF) colorPalette.accent else colorPalette.textSecondary
+                    tint = if (isAzanPlaying) contentColorSecondary.copy(alpha = 0.5f) 
+                           else if (repeatMode != Player.REPEAT_MODE_OFF) colorPalette.accent else contentColorSecondary
                 )
             }
         }
         
         Spacer(modifier = Modifier.height(16.dp))
+    }
+
+    if (fullScreenLyrics) {
+        Lyrics(
+            mediaId = mediaItem.mediaId,
+            isDisplayed = true,
+            onDismiss = { fullScreenLyrics = false },
+            size = 600.dp,
+            mediaMetadataProvider = mediaItem::mediaMetadata,
+            durationProvider = player::getDuration,
+            ensureSongInserted = { Database.insert(mediaItem) },
+            fullScreenLyrics = true,
+            toggleFullScreenLyrics = { fullScreenLyrics = false }
+        )
     }
 
     if (isShowingSleepTimerDialog) {
@@ -577,5 +661,11 @@ fun ModernPlayer(
             onDismiss = { isShowingVolumeBoosterDialog = false }
         )
     }
+    if (isShowingMusicStyleDialog) {
+        MusicStyleDialog(
+            onDismiss = { isShowingMusicStyleDialog = false }
+        )
+    }
+}
 }
 

@@ -27,6 +27,12 @@ object KuGou {
 
             expectSuccess = true
 
+            engine {
+                config {
+                    retryOnConnectionFailure(true)
+                }
+            }
+
             install(ContentNegotiation) {
                 val feature = Json {
                     ignoreUnknownKeys = true

@@ -14,6 +14,11 @@ import kotlinx.serialization.json.Json
 object BetterLyrics {
     private val client by lazy {
         HttpClient(OkHttp) {
+            engine {
+                config {
+                    retryOnConnectionFailure(true)
+                }
+            }
             install(ContentNegotiation) {
                 json(Json {
                     ignoreUnknownKeys = true

@@ -20,6 +20,12 @@ object Innertube {
     val client = HttpClient(OkHttp) {
         expectSuccess = true
 
+        engine {
+            config {
+                retryOnConnectionFailure(true)
+            }
+        }
+
         install(ContentNegotiation) {
             json(Json {
                 ignoreUnknownKeys = true
@@ -30,14 +36,16 @@ object Innertube {
 
         install(ContentEncoding) {
             brotli()
+            gzip()
+            deflate()
         }
 
         defaultRequest {
-            url(scheme = "https", host ="music.youtube.com") {
-                contentType(ContentType.Application.Json)
-                headers.append("X-Goog-Api-Key", "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8")
-                parameters.append("prettyPrint", "false")
-            }
+            url(scheme = "https", host ="music.youtube.com")
+            contentType(ContentType.Application.Json)
+            header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0")
+            header("X-Goog-Api-Key", "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8")
+            url.parameters.append("prettyPrint", "false")
         }
     }
 

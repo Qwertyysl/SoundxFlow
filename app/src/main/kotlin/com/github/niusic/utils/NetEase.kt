@@ -18,6 +18,11 @@ object NetEase {
     private val client by lazy {
         HttpClient(OkHttp) {
             BrowserUserAgent()
+            engine {
+                config {
+                    retryOnConnectionFailure(true)
+                }
+            }
             install(ContentNegotiation) {
                 json(Json {
                     ignoreUnknownKeys = true

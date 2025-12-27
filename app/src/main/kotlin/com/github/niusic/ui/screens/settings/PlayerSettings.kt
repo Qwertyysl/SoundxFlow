@@ -1,14 +1,16 @@
 package com.github.niusic.ui.screens.settings
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.automirrored.outlined.QueueMusic
 import androidx.compose.material.icons.filled.MusicOff
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -17,11 +19,15 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.sp
 import com.github.core.ui.LocalAppearance
 import com.github.niusic.R
 import com.github.niusic.ui.common.IconSource
@@ -29,6 +35,8 @@ import com.github.niusic.ui.components.SettingsCard
 import com.github.niusic.ui.components.SettingsScreenLayout
 import com.github.niusic.ui.components.SliderSettingsItem
 import com.github.niusic.ui.components.SwitchSetting
+import com.github.niusic.enums.MusicStylePreset
+import com.github.niusic.utils.musicStylePresetKey
 import com.github.niusic.utils.isAtLeastAndroid6
 import com.github.niusic.utils.persistentQueueKey
 import com.github.niusic.utils.rememberPreference
@@ -37,6 +45,8 @@ import com.github.niusic.utils.skipSilenceKey
 import com.github.niusic.utils.volumeBoosterEnabledKey
 import com.github.niusic.utils.volumeBoosterGainKey
 import com.github.niusic.utils.volumeNormalizationKey
+import com.github.niusic.utils.floatingLyricsFontSizeKey
+import com.github.niusic.utils.lyricsFontSizeKey
 import java.util.Locale
 
 @Suppress("AssignedValueIsNeverRead")
@@ -55,11 +65,14 @@ fun PlayerSettings(
     var volumeBoosterEnabled by rememberPreference(volumeBoosterEnabledKey, false)
     var volumeBoosterGain by rememberPreference(volumeBoosterGainKey, 0)
     var isFloatingLyricsEnabled by rememberPreference(com.github.niusic.utils.isFloatingLyricsEnabledKey, false)
+    var lyricsFontSize by rememberPreference(lyricsFontSizeKey, 20)
+    var floatingLyricsFontSize by rememberPreference(floatingLyricsFontSizeKey, 20)
     var resumePlaybackWhenDeviceConnected by rememberPreference(
         resumePlaybackWhenDeviceConnectedKey,
         false
     )
     var persistentQueue by rememberPreference(persistentQueueKey, false)
+    var musicStylePreset by rememberPreference(musicStylePresetKey, MusicStylePreset.None)
 
     BackHandler(onBack = onBackClick)
 
@@ -145,6 +158,57 @@ fun PlayerSettings(
                     switchState = isFloatingLyricsEnabled,
                     onSwitchChange = { isFloatingLyricsEnabled = it }
                 )
+
+                SliderSettingsItem(
+                    label = stringResource(id = R.string.lyrics_font_size),
+                    value = lyricsFontSize.toFloat(),
+                    onValueChange = { lyricsFontSize = it.toInt() },
+                    valueRange = 12f..40f,
+                    valueLabel = { "${it.toInt()} sp" },
+                    hapticUseIntegerStep = true
+                )
+
+                if (isFloatingLyricsEnabled) {
+                    SliderSettingsItem(
+                        label = stringResource(id = R.string.floating_lyrics_font_size),
+                        value = floatingLyricsFontSize.toFloat(),
+                        onValueChange = { floatingLyricsFontSize = it.toInt() },
+                        valueRange = 12f..40f,
+                        valueLabel = { "${it.toInt()} sp" },
+                        hapticUseIntegerStep = true
+                    )
+                }
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        text = stringResource(id = R.string.lyrics_preview),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = colorPalette.text.copy(alpha = 0.5f)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(MaterialTheme.shapes.medium)
+                            .background(colorPalette.background2)
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = stringResource(id = R.string.sample_lyrics),
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                fontSize = lyricsFontSize.sp,
+                                fontWeight = FontWeight.Medium
+                            ),
+                            color = colorPalette.text,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -212,6 +276,53 @@ fun PlayerSettings(
                         valueLabel = { "${100 + (it / 20).toInt()}%" },
                         hapticUseIntegerStep = true
                     )
+                }
+
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    color = colorPalette.text.copy(alpha = 0.1f)
+                )
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        text = stringResource(id = R.string.music_style),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = colorPalette.text
+                    )
+                    Text(
+                        text = stringResource(id = R.string.music_style_description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colorPalette.text.copy(alpha = 0.7f)
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        MusicStylePreset.entries.forEach { preset ->
+                            FilterChip(
+                                selected = musicStylePreset == preset,
+                                onClick = { musicStylePreset = preset },
+                                label = {
+                                    Text(
+                                        text = when (preset) {
+                                            MusicStylePreset.None -> stringResource(id = R.string.none)
+                                            MusicStylePreset.VocalBoost -> stringResource(id = R.string.vocal_boost)
+                                            MusicStylePreset.MusicBoost -> stringResource(id = R.string.music_boost)
+                                            MusicStylePreset.DolbyAtmos -> stringResource(id = R.string.dolby_atmos)
+                                        }
+                                    )
+                                }
+                            )
+                        }
+                    }
                 }
             }
 

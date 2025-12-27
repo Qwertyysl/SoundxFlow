@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -102,7 +103,7 @@ fun PlayerScaffold(
             )
     ) {
         BottomSheetScaffold(
-            sheetShape = MaterialTheme.shapes.extraLarge,
+            sheetShape = if (appearance.designStyle == DesignStyle.Classic) MaterialTheme.shapes.large else RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
             sheetContainerColor = MaterialTheme.colorScheme.background,
             sheetContent = {
                 PlayerBackground(thumbnailUrl = currentArtworkUrl) {

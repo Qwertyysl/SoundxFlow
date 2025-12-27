@@ -28,6 +28,7 @@ import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.luminance
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import com.github.core.ui.LocalAppearance
@@ -42,6 +43,8 @@ import kotlinx.coroutines.withContext
 @Composable
 fun PlayerMediaItem(
     onGoToArtist: (() -> Unit)?,
+    textColor: Color? = null,
+    secondaryTextColor: Color? = null
 ) {
     val binder = LocalPlayerServiceBinder.current
     val player = binder?.player ?: return
@@ -69,7 +72,12 @@ fun PlayerMediaItem(
     )
 
     val mediaItem = currentItem ?: return
-    val (colorPalette) = LocalAppearance.current
+    val appearance = LocalAppearance.current
+    val colorPalette = appearance.colorPalette
+    
+    val titleColor = textColor ?: colorPalette.text
+    val artistColor = textColor ?: colorPalette.text
+    val yearColor = secondaryTextColor ?: colorPalette.textSecondary
 
     LaunchedEffect(mediaItem.mediaId) {
         withContext(Dispatchers.IO) {
@@ -97,12 +105,12 @@ fun PlayerMediaItem(
         // TITLE
         Text(
             text = mediaItem.mediaMetadata.title?.toString().orEmpty(),
-            color = colorPalette.text,
+            color = titleColor,
             modifier = Modifier.basicMarquee(),
             style = MaterialTheme.typography.titleMedium.copy(
                 fontWeight = FontWeight.ExtraBold,
                 shadow = Shadow(
-                    color = Color.Black.copy(alpha = 0.3f),
+                    color = (if (titleColor.luminance() > 0.5f) Color.Black else Color.White).copy(alpha = 0.3f),
                     offset = Offset(2f, 2f),
                     blurRadius = 4f
                 )
@@ -113,10 +121,10 @@ fun PlayerMediaItem(
         if (!albumYear.isNullOrEmpty()) {
             Text(
                 text = albumYear!!,
-                color = colorPalette.textSecondary,
+                color = yearColor,
                 style = MaterialTheme.typography.labelMedium.copy(
                     shadow = Shadow(
-                        color = Color.Black.copy(alpha = 0.3f),
+                        color = (if (yearColor.luminance() > 0.5f) Color.Black else Color.White).copy(alpha = 0.3f),
                         offset = Offset(1f, 1f),
                         blurRadius = 2f
                     )
@@ -141,10 +149,10 @@ fun PlayerMediaItem(
         ) {
             Text(
                 text = mediaItem.mediaMetadata.artist?.toString().orEmpty(),
-                color = colorPalette.text,
+                color = artistColor,
                 style = MaterialTheme.typography.bodyLarge.copy(
                     shadow = Shadow(
-                        color = Color.Black.copy(alpha = 0.3f),
+                        color = (if (artistColor.luminance() > 0.5f) Color.Black else Color.White).copy(alpha = 0.3f),
                         offset = Offset(2f, 2f),
                         blurRadius = 4f
                     )

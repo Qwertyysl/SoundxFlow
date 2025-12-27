@@ -341,6 +341,10 @@ interface Database {
     fun lastPlayed(): Flow<Song?>
 
     @Transaction
+    @Query("SELECT Song.* FROM Event JOIN Song ON Song.id = songId GROUP BY songId ORDER BY timestamp DESC LIMIT 20")
+    fun history(): Flow<List<Song>>
+
+    @Transaction
     @Query("SELECT * FROM Song ORDER BY RANDOM() LIMIT 1")
     fun randomSong(): Flow<Song?>
 

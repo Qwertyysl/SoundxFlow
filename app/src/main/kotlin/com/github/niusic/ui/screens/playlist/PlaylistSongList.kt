@@ -30,6 +30,10 @@ import com.github.niusic.ui.components.adaptiveThumbnailContent
 import com.github.niusic.ui.items.ListItemPlaceholder
 import com.github.niusic.ui.items.SongItem
 import com.github.niusic.utils.asMediaItem
+import com.github.niusic.utils.lastPlayedPlaylistIdKey
+import androidx.core.content.edit
+import com.github.niusic.utils.preferences
+import androidx.compose.ui.platform.LocalContext
 import com.github.niusic.utils.enqueue
 import com.github.niusic.utils.forcePlayAtIndex
 import com.github.niusic.utils.forcePlayFromBeginning

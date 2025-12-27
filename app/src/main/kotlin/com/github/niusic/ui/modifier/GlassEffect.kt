@@ -31,8 +31,7 @@ fun Modifier.glassEffect(
     val baseModifier = this
         .clip(shape)
         .background(
-            if (isDark) Color.Black.copy(alpha = alpha) 
-            else Color.White.copy(alpha = alpha)
+            Color.White.copy(alpha = if (isDark) alpha * 1.5f else alpha)
         )
         .border(
             width = borderWidth,
@@ -61,4 +60,3 @@ fun Modifier.glassEffect(
         baseModifier
     }
 }
-

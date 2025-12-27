@@ -5,7 +5,7 @@ An Android application for streaming music from YouTube Music.
 </p>
 
 <p align="center">
-  <img src="./screenshots/repository_preview.png" 
+  <img src="./screenshots/repository_preview.jpg" 
        alt="Repository preview" 
        width="1024"
        style="border-radius: 15px;">

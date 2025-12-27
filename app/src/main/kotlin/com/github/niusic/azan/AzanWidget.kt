@@ -14,6 +14,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalConfiguration
 import com.github.niusic.utils.azanLocationKey
 import com.github.niusic.utils.azanReminderEnabledKey
 import com.github.niusic.utils.prayerTimesTodayKey
@@ -81,59 +82,64 @@ fun AzanWidget() {
     val isDark = appearance.colorPalette.isDark
     val onColor = if (isGlass) (if (isDark) Color.White else Color.Black) else MaterialTheme.colorScheme.onSurface
 
-    Column(
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-            .padding(16.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column {
+        val isSmall = maxWidth < 360.dp
+        
+        Column(modifier = Modifier.padding(if (isSmall) 8.dp else 16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Prayer Times (${azanZones.find { it.code == selectedZone }?.code})",
+                        style = if (isSmall) MaterialTheme.typography.labelMedium else MaterialTheme.typography.titleSmall,
+                        color = onColor,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = timeString,
+                        style = if (isSmall) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyMedium,
+                        color = onColor,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                
                 Text(
-                    text = "Prayer Times (${azanZones.find { it.code == selectedZone }?.code})",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = onColor,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = timeString,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = onColor,
-                    fontWeight = FontWeight.Bold
+                    text = SimpleDateFormat(if (isSmall) "d MMM" else "EEEE, d MMMM yyyy", Locale.getDefault()).format(Date()),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = onColor.copy(alpha = 0.7f),
+                    modifier = Modifier.align(Alignment.Top)
                 )
             }
-            
-            Text(
-                text = SimpleDateFormat("EEEE, d MMMM yyyy", Locale.getDefault()).format(Date()),
-                style = MaterialTheme.typography.labelSmall,
-                color = onColor.copy(alpha = 0.7f),
-                modifier = Modifier.align(Alignment.Top)
-            )
-        }
 
-        Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            PrayerTimeItem("Subuh", format12h(prayerTime.fajr ?: ""))
-            PrayerTimeItem("Zohor", format12h(prayerTime.dhuhr ?: ""))
-            PrayerTimeItem("Asar", format12h(prayerTime.asr ?: ""))
-            PrayerTimeItem("Maghrib", format12h(prayerTime.maghrib ?: ""))
-            PrayerTimeItem("Isyak", format12h(prayerTime.isha ?: ""))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                PrayerTimeItem("Subuh", format12h(prayerTime.fajr ?: ""), isSmall)
+                PrayerTimeItem("Zohor", format12h(prayerTime.dhuhr ?: ""), isSmall)
+                PrayerTimeItem("Asar", format12h(prayerTime.asr ?: ""), isSmall)
+                PrayerTimeItem("Maghrib", format12h(prayerTime.maghrib ?: ""), isSmall)
+                PrayerTimeItem("Isyak", format12h(prayerTime.isha ?: ""), isSmall)
+            }
         }
     }
 }
 
 @Composable
-fun PrayerTimeItem(name: String, time: String) {
+fun PrayerTimeItem(name: String, time: String, isSmall: Boolean = false) {
     val appearance = com.github.core.ui.LocalAppearance.current
     val isGlass = appearance.designStyle == com.github.core.ui.DesignStyle.Glass
     val isDark = appearance.colorPalette.isDark
@@ -144,14 +150,15 @@ fun PrayerTimeItem(name: String, time: String) {
         Text(
             text = name, 
             style = MaterialTheme.typography.labelSmall, 
-            fontSize = 10.sp,
+            fontSize = if (isSmall) 8.sp else 10.sp,
             color = onColorSecondary
         )
         Text(
-            text = time, 
-            style = MaterialTheme.typography.bodySmall, 
+            text = time.replace(" am", "a").replace(" pm", "p"), 
+            style = if (isSmall) MaterialTheme.typography.labelSmall else MaterialTheme.typography.bodySmall, 
             fontWeight = FontWeight.Bold,
-            color = onColor
+            color = onColor,
+            fontSize = if (isSmall) 9.sp else 12.sp
         )
     }
 }
@@ -172,4 +179,3 @@ fun format12h(time24: String): String {
         time24
     }
 }
-

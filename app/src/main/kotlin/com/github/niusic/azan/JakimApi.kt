@@ -16,6 +16,11 @@ object JakimApi {
     }
     
     private val client = HttpClient(OkHttp) {
+        engine {
+            config {
+                retryOnConnectionFailure(true)
+            }
+        }
         install(ContentNegotiation) {
             json(json)
         }

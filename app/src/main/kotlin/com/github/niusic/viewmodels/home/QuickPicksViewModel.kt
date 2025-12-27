@@ -11,9 +11,22 @@ import com.github.niusic.enums.QuickPicksSource
 import com.github.niusic.models.Song
 import kotlinx.coroutines.flow.distinctUntilChanged
 
-class QuickPicksViewModel : ViewModel() {
+import com.github.niusic.utils.lastPlayedPlaylistIdKey
+import com.github.niusic.utils.preferences
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
+
+class QuickPicksViewModel(application: Application) : AndroidViewModel(application) {
+    private val context = application.applicationContext
     var trending: Song? by mutableStateOf(null)
+    var history: List<Song> by mutableStateOf(emptyList())
     var relatedPageResult: Result<Innertube.RelatedPage?>? by mutableStateOf(null)
+
+    suspend fun loadHistory() {
+        Database.history().distinctUntilChanged().collect {
+            history = it
+        }
+    }
 
     suspend fun loadQuickPicks(quickPicksSource: QuickPicksSource) {
         val flow = when (quickPicksSource) {
@@ -26,7 +39,11 @@ class QuickPicksViewModel : ViewModel() {
             if (quickPicksSource == QuickPicksSource.Random && song != null && trending != null) return@collect
 
             if ((song == null && relatedPageResult == null) || trending?.id != song?.id || relatedPageResult?.isSuccess != true) {
-                relatedPageResult = Innertube.relatedPage(videoId = (song?.id ?: "fJ9rUzIMcZQ"))
+                val lastPlaylistId = context.preferences.getString(lastPlayedPlaylistIdKey, null)
+                relatedPageResult = Innertube.relatedPage(
+                    videoId = (song?.id ?: "fJ9rUzIMcZQ"),
+                    playlistId = lastPlaylistId
+                )
             }
 
             trending = song

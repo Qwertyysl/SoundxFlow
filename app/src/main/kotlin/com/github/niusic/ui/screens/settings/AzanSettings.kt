@@ -33,6 +33,7 @@ fun AzanSettings(
     var azanEnabled by rememberPreference(azanReminderEnabledKey, false)
     var selectedZone by rememberPreference(azanLocationKey, "WLY01")
     var azanAudioPath by rememberPreference(azanAudioPathKey, "")
+    var azanQuietMode by rememberPreference(azanQuietModeKey, false)
 
     var showZoneDialog by remember { mutableStateOf(false) }
     
@@ -89,8 +90,17 @@ fun AzanSettings(
             )
 
             SettingColum(
+                title = "Simple Quiet Mode",
+                description = "Pause music for 5 minutes instead of playing Azan audio",
+                trailingContent = {
+                    Switch(checked = azanQuietMode, onCheckedChange = { azanQuietMode = it })
+                },
+                onClick = { azanQuietMode = !azanQuietMode }
+            )
+
+            SettingColum(
                 title = "Azan Audio",
-                description = if (azanAudioPath.isEmpty()) "Not selected" else "Selected: ${Uri.parse(azanAudioPath).lastPathSegment}",
+                description = if (azanAudioPath.isEmpty()) "Default (azantv3)" else "Selected: ${Uri.parse(azanAudioPath).lastPathSegment}",
                 onClick = {
                     audioPickerLauncher.launch(arrayOf("audio/*"))
                 }
@@ -196,5 +206,3 @@ fun InfoCard(
         }
     }
 }
-
-

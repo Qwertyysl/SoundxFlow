@@ -4,23 +4,11 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.only
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -32,8 +20,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
@@ -90,6 +84,33 @@ fun NewPlayer(
     }
 
     var shouldBePlaying by remember { mutableStateOf(player.shouldBePlaying) }
+
+    val appearance = com.github.core.ui.LocalAppearance.current
+    val colorPalette = appearance.colorPalette
+    val backgroundStyle by rememberPreference(com.github.niusic.ui.appearance.PLAYER_BACKGROUND_STYLE_KEY, com.github.niusic.ui.appearance.BackgroundStyles.DYNAMIC)
+    val isGlassTheme = appearance.designStyle == com.github.core.ui.DesignStyle.Glass || backgroundStyle == com.github.niusic.ui.appearance.BackgroundStyles.GLASS
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    var adaptiveContentColor by remember { mutableStateOf(colorPalette.text) }
+    
+    LaunchedEffect(mediaItem.mediaMetadata.artworkUri, appearance.designStyle, backgroundStyle) {
+        val dominant = withContext(Dispatchers.IO) {
+            com.github.niusic.ui.appearance.extractDominantColor(context, mediaItem.mediaMetadata.artworkUri?.toString(), colorPalette.background1)
+        }
+        
+        if (isGlassTheme) {
+            adaptiveContentColor = if (colorPalette.isDark) {
+                if (dominant.luminance() > 0.8f) Color(0xFFCCCCCC) else Color.White
+            } else {
+                if (dominant.luminance() < 0.3f) Color.Black.copy(alpha = 0.8f) else Color.Black
+            }
+        } else {
+            adaptiveContentColor = colorPalette.text
+        }
+    }
+
+    val contentColor = adaptiveContentColor
+    val contentColorSecondary = contentColor.copy(alpha = 0.7f)
 
     player.DisposableListener {
         object : Player.Listener {
@@ -206,20 +227,27 @@ fun NewPlayer(
 
     var showPlaylist by remember { mutableStateOf(false) }
     var showLyrics by rememberSaveable { mutableStateOf(false) }
+    var fullScreenLyrics by remember { mutableStateOf(false) }
+    var likedAt by rememberSaveable { mutableStateOf<Long?>(null) }
 
-    BackHandler(enabled = showPlaylist || showLyrics) {
-        if (showPlaylist) showPlaylist = false
+    LaunchedEffect(mediaItem.mediaId) {
+        Database.likedAt(mediaItem.mediaId).collect { likedAt = it }
+    }
+
+    BackHandler(enabled = showPlaylist || showLyrics || fullScreenLyrics) {
+        if (fullScreenLyrics) fullScreenLyrics = false
+        else if (showPlaylist) showPlaylist = false
         else if (showLyrics) showLyrics = false
     }
 
     val positionAndDuration by player.positionAndDurationState()
 
-    var fullScreenLyrics by remember { mutableStateOf(false) }
     var isShowingStatsForNerds by rememberSaveable { mutableStateOf(false) }
 
-    if (isLandscape) {
-        //todo
-    } else {
+    Box(modifier = Modifier.fillMaxSize()) {
+        if (isLandscape) {
+            //todo
+        } else {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
@@ -231,6 +259,7 @@ fun NewPlayer(
                 )
                 .navigationBarsPadding()
                 .padding(bottom = 8.dp)
+                .verticalScroll(rememberScrollState())
         ) {
 
             Spacer(modifier = Modifier.height(Dimensions.spacer))
@@ -241,7 +270,23 @@ fun NewPlayer(
                 onBack = onMinimize,
             )
 
-            Box(Modifier.weight(1f)) {
+            val isAzanPlaying by rememberPreference(com.github.niusic.utils.isAzanPlayingKey, false)
+            Text(
+                text = if (isAzanPlaying) "AZAN" else "NOW PLAYING",
+                style = MaterialTheme.typography.labelMedium.copy(
+                    shadow = Shadow(
+                        color = (if (contentColor.luminance() > 0.5f) Color.Black else Color.White).copy(alpha = 0.3f),
+                        offset = Offset(1f, 1f),
+                        blurRadius = 2f
+                    )
+                ),
+                color = if (isAzanPlaying) colorPalette.accent else contentColorSecondary,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 2.sp,
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            )
+
+            Box {
                 androidx.compose.animation.AnimatedContent(
                     targetState = if (showPlaylist) 1 else if (showLyrics) 2 else 0,
                     transitionSpec = {
@@ -253,7 +298,7 @@ fun NewPlayer(
                         1 -> { // Playlist
                             Column {
                                 PlaylistOverlay(
-                                    modifier = Modifier.weight(1f),
+                                    modifier = Modifier.heightIn(max = 400.dp),
                                     onGoToAlbum = onGoToAlbum,
                                     onGoToArtist = onGoToArtist
                                 )
@@ -263,7 +308,7 @@ fun NewPlayer(
                         2 -> { // Full Lyrics View
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier.fillMaxSize()
+                                modifier = Modifier.fillMaxWidth()
                             ) {
                                 // Mini Thumbnail at the top
                                 Box(
@@ -281,7 +326,7 @@ fun NewPlayer(
                                     )
                                 }
                                 
-                                Box(modifier = Modifier.weight(1f)) {
+                                Box(modifier = Modifier.height(400.dp)) {
                                     Lyrics(
                                         mediaId = mediaItem.mediaId,
                                         isDisplayed = true,
@@ -290,8 +335,8 @@ fun NewPlayer(
                                         size = 400.dp, // Dummy size, Lyrics uses it for padding
                                         mediaMetadataProvider = mediaItem::mediaMetadata,
                                         durationProvider = player::getDuration,
-                                        fullScreenLyrics = true,
-                                        toggleFullScreenLyrics = { /* already full screen */ }
+                                        fullScreenLyrics = false,
+                                        toggleFullScreenLyrics = { fullScreenLyrics = true }
                                     )
                                 }
                             }
@@ -299,7 +344,7 @@ fun NewPlayer(
                         else -> { // Default Thumbnail View
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier.fillMaxSize()
+                                modifier = Modifier.fillMaxWidth()
                             ) {
                                 Spacer(modifier = Modifier.height(30.dp))
 
@@ -321,17 +366,21 @@ fun NewPlayer(
                                 PlayerMediaItem(
                                     onGoToArtist = artistId?.let {
                                         { onGoToArtist(it) }
-                                    }
+                                    },
+                                    textColor = contentColor,
+                                    secondaryTextColor = contentColorSecondary
                                 )
 
-                                Spacer(modifier = Modifier.weight(1f))
+                                Spacer(modifier = Modifier.height(16.dp))
 
                                 PlayerMiddleControl(
                                     showPlaylist = showPlaylist,
                                     onTogglePlaylist = { showPlaylist = it },
                                     mediaId = mediaItem.mediaId,
+                                    likedAt = likedAt,
                                     onGoToAlbum = onGoToAlbum,
-                                    onGoToArtist = onGoToArtist
+                                    onGoToArtist = onGoToArtist,
+                                    textColor = contentColor
                                 )
                             }
                         }
@@ -362,10 +411,26 @@ fun NewPlayer(
                         }
                         player.play()
                     }
-                }
+                },
+                textColor = contentColor
             )
         }
 
+        if (fullScreenLyrics) {
+            Lyrics(
+                mediaId = mediaItem.mediaId,
+                isDisplayed = true,
+                onDismiss = { fullScreenLyrics = false },
+                size = 600.dp,
+                mediaMetadataProvider = mediaItem::mediaMetadata,
+                durationProvider = player::getDuration,
+                ensureSongInserted = { Database.insert(mediaItem) },
+                fullScreenLyrics = true,
+                toggleFullScreenLyrics = { fullScreenLyrics = false }
+            )
+        }
     }
 }
+}
+
 

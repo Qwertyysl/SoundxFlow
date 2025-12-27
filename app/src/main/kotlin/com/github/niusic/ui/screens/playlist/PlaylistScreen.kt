@@ -41,6 +41,9 @@ import com.github.niusic.ui.components.TooltipIconButton
 import com.github.niusic.ui.components.TextFieldDialog
 import com.github.niusic.utils.asMediaItem
 import com.github.niusic.utils.completed
+import com.github.niusic.utils.lastPlayedPlaylistIdKey
+import androidx.core.content.edit
+import com.github.niusic.utils.preferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -58,12 +61,15 @@ fun PlaylistScreen(
     var isImportingPlaylist by rememberSaveable { mutableStateOf(false) }
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
+    val context = LocalContext.current
     LaunchedEffect(Unit) {
         if (playlistPage != null && playlistPage?.songsPage?.continuation == null) return@LaunchedEffect
 
         playlistPage = withContext(Dispatchers.IO) {
             Innertube.playlistPage(browseId = browseId)?.completed()?.getOrNull()
         }
+        
+        context.preferences.edit { putString(lastPlayedPlaylistIdKey, browseId) }
     }
 
     Scaffold(

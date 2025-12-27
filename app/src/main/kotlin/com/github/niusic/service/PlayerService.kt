@@ -18,6 +18,7 @@ import android.media.AudioManager
 import android.media.MediaDescription
 import android.media.MediaMetadata
 import android.media.audiofx.AudioEffect
+import android.media.audiofx.Equalizer
 import android.media.audiofx.LoudnessEnhancer
 import android.media.session.MediaSession
 import android.media.session.PlaybackState
@@ -74,6 +75,7 @@ import com.github.niusic.Database
 import com.github.niusic.MainActivity
 import com.github.niusic.R
 import com.github.niusic.enums.ExoPlayerDiskCacheMaxSize
+import com.github.niusic.enums.MusicStylePreset
 import com.github.niusic.models.Event
 import com.github.niusic.models.QueuedMediaItem
 import com.github.niusic.query
@@ -97,6 +99,7 @@ import com.github.niusic.utils.isInvincibilityEnabledKey
 import com.github.niusic.utils.isLockscreenLyricsEnabledKey
 import com.github.niusic.utils.isShowingThumbnailInLockscreenKey
 import com.github.niusic.utils.mediaItems
+import com.github.niusic.utils.musicStylePresetKey
 import com.github.niusic.utils.LrcParser
 import com.github.niusic.models.Lyrics
 import kotlinx.coroutines.delay
@@ -200,6 +203,7 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
     private var audioDeviceCallback: AudioDeviceCallback? = null
 
     private var loudnessEnhancer: LoudnessEnhancer? = null
+    private var equalizer: Equalizer? = null
 
     private var isLockscreenLyricsEnabled = false
     private var currentLyricsLines: List<Pair<Long, String>>? = null
@@ -359,6 +363,7 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
         )
 
         maybeResumePlaybackWhenDeviceConnected()
+        updateEqualizer()
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
@@ -386,6 +391,7 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
         if (wifiLock?.isHeld == true) wifiLock?.release()
 
         loudnessEnhancer?.release()
+        equalizer?.release()
 
         super.onDestroy()
     }
@@ -437,7 +443,9 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
         currentLyricsLines = null
 
         if (!isLockscreenLyricsEnabled || player.currentMediaItem == null) {
-            notificationManager?.notify(NOTIFICATION_ID, notification())
+            notification()?.let { notification ->
+                notificationManager?.notify(NOTIFICATION_ID, notification)
+            }
             return
         }
 
@@ -449,18 +457,18 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
                 
                 if (currentLyricsLines.isNullOrEmpty()) {
                     withContext(Dispatchers.Main) {
-                        notificationManager?.notify(NOTIFICATION_ID, notification())
+                        notification()?.let { notification ->
+                            notificationManager?.notify(NOTIFICATION_ID, notification)
+                        }
                     }
                     return@collectLatest
                 }
 
                 while (isActive) {
                     val position = withContext(Dispatchers.Main) { player.currentPosition }
-                    val currentLine = currentLyricsLines?.findLast { it.first <= position }?.second
                     
                     withContext(Dispatchers.Main) {
-                        val notification = notification()
-                        if (notification != null) {
+                        notification()?.let { notification ->
                             notificationManager?.notify(NOTIFICATION_ID, notification)
                         }
                     }
@@ -641,11 +649,77 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
         }
     }
 
+    private fun updateEqualizer() {
+        val preset = preferences.getEnum(musicStylePresetKey, MusicStylePreset.None)
+
+        if (preset == MusicStylePreset.None) {
+            equalizer?.enabled = false
+            equalizer?.release()
+            equalizer = null
+            return
+        }
+
+        if (equalizer == null) {
+            equalizer = try {
+                Equalizer(0, player.audioSessionId)
+            } catch (e: Exception) {
+                null
+            }
+        }
+
+        equalizer?.let { eq ->
+            try {
+                eq.enabled = true
+                val numBands = eq.numberOfBands
+                val (minLevel, maxLevel) = eq.bandLevelRange
+                val midLevel = (minLevel + maxLevel) / 2
+                
+                for (i in 0 until numBands) {
+                    eq.setBandLevel(i.toShort(), midLevel.toShort())
+                }
+
+                when (preset) {
+                    MusicStylePreset.VocalBoost -> {
+                        for (i in 0 until numBands) {
+                            val freq = eq.getCenterFreq(i.toShort()) / 1000 
+                            if (freq in 800..5000) {
+                                eq.setBandLevel(i.toShort(), (midLevel + (maxLevel - midLevel) * 0.6f).toInt().toShort())
+                            }
+                        }
+                    }
+                    MusicStylePreset.MusicBoost -> {
+                        for (i in 0 until numBands) {
+                            val freq = eq.getCenterFreq(i.toShort()) / 1000 
+                            if (freq < 300 || freq > 7000) {
+                                eq.setBandLevel(i.toShort(), (midLevel + (maxLevel - midLevel) * 0.5f).toInt().toShort())
+                            }
+                        }
+                    }
+                    MusicStylePreset.DolbyAtmos -> {
+                        for (i in 0 until numBands) {
+                            val freq = eq.getCenterFreq(i.toShort()) / 1000 
+                            when {
+                                freq < 200 -> eq.setBandLevel(i.toShort(), (midLevel + (maxLevel - midLevel) * 0.7f).toInt().toShort())
+                                freq in 200..800 -> eq.setBandLevel(i.toShort(), (midLevel + (maxLevel - midLevel) * 0.3f).toInt().toShort())
+                                freq in 800..3000 -> eq.setBandLevel(i.toShort(), midLevel.toShort())
+                                freq in 3000..8000 -> eq.setBandLevel(i.toShort(), (midLevel + (maxLevel - midLevel) * 0.4f).toInt().toShort())
+                                freq > 8000 -> eq.setBandLevel(i.toShort(), (midLevel + (maxLevel - midLevel) * 0.6f).toInt().toShort())
+                            }
+                        }
+                    }
+                    else -> {}
+                }
+            } catch (e: Exception) {
+            }
+        }
+    }
+
     private fun maybeShowSongCoverInLockScreen() {
         val bitmap =
             if (isAtLeastAndroid13 || isShowingThumbnailInLockscreen) bitmapProvider.bitmap else null
 
         metadataBuilder.putBitmap(MediaMetadata.METADATA_KEY_ART, bitmap)
+        metadataBuilder.putBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART, bitmap)
 
         if (isAtLeastAndroid13 && player.currentMediaItemIndex == 0) {
             metadataBuilder.putText(
@@ -799,6 +873,8 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
             }
 
             volumeNormalizationKey, volumeBoosterEnabledKey, volumeBoosterGainKey -> updateLoudnessEnhancer()
+
+            musicStylePresetKey -> updateEqualizer()
 
             resumePlaybackWhenDeviceConnectedKey -> maybeResumePlaybackWhenDeviceConnected()
 

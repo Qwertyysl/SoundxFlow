@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -107,29 +108,43 @@ fun NewMiniPlayer(
 
     var adaptiveContentColor by remember { mutableStateOf(colorPalette.text) }
     
-    LaunchedEffect(mediaItem.mediaMetadata.artworkUri) {
+    LaunchedEffect(mediaItem.mediaMetadata.artworkUri, appearance.designStyle, backgroundStyle) {
         val dominant = withContext(Dispatchers.IO) {
             extractDominantColor(context, mediaItem.mediaMetadata.artworkUri?.toString(), colorPalette.background1)
         }
-        adaptiveContentColor = if (dominant.luminance() > 0.5f) Color.Black else Color.White
+        
+        if (isGlassTheme) {
+            adaptiveContentColor = if (colorPalette.isDark) {
+                if (dominant.luminance() > 0.8f) Color(0xFFCCCCCC) else Color.White
+            } else {
+                if (dominant.luminance() < 0.3f) Color.Black.copy(alpha = 0.8f) else Color.Black
+            }
+        } else {
+            adaptiveContentColor = colorPalette.text
+        }
     }
 
-    val contentColor = if (isGlassTheme) adaptiveContentColor else colorPalette.text
+    val contentColor = adaptiveContentColor
     val title = mediaItem.mediaMetadata.title?.toString() ?: ""
     val artist = mediaItem.mediaMetadata.artist?.toString() ?: ""
     val album = mediaItem.mediaMetadata.albumTitle?.toString() ?: ""
 
     val navigationBarsPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
+    val seekBarColor = if (isGlassTheme) {
+        if (colorPalette.isDark) Color(0xFFCCCCCC) else Color.White
+    } else colorPalette.collapsedPlayerProgressBar.copy(alpha = 0.8f)
+
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(72.dp + navigationBarsPadding)
+            .padding(bottom = navigationBarsPadding)
+            .height(72.dp)
             .then(
                 if (isGlassTheme) {
                     Modifier.glassEffect(shape = RoundedCornerShape(0.dp), alpha = 0.15f)
                 } else {
-                    Modifier // DynamicBackground will handle it below if not glass
+                    Modifier 
                 }
             )
     ) {
@@ -157,9 +172,8 @@ fun NewMiniPlayer(
                     val barWidth = size.width * fraction
 
                     if (barWidth > 0f) {
-                        // Draw progress bar at the bottom of the 72dp content area
                         drawRect(
-                            color = colorPalette.collapsedPlayerProgressBar.copy(alpha = 0.8f),
+                            color = seekBarColor,
                             topLeft = Offset(0f, 72.dp.toPx() - 2.dp.toPx()),
                             size = Size(width = barWidth, height = 2.dp.toPx())
                         )
@@ -172,6 +186,7 @@ fun NewMiniPlayer(
                     .fillMaxWidth()
                     .height(72.dp)
                     .padding(horizontal = 12.dp)
+                    .padding(bottom = 2.dp)
             ) {
                 AsyncImage(
                     model = mediaItem.mediaMetadata.artworkUri.thumbnail(Dimensions.thumbnails.song.px),
@@ -194,7 +209,7 @@ fun NewMiniPlayer(
                         text = title,
                         style = MaterialTheme.typography.bodyMedium.copy(
                             shadow = if (isGlassTheme) Shadow(
-                                color = if (contentColor == Color.White) Color.Black.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.3f),
+                                color = if (contentColor.luminance() > 0.5f) Color.Black.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.3f),
                                 offset = Offset(1f, 1f),
                                 blurRadius = 2f
                             ) else null
@@ -208,7 +223,7 @@ fun NewMiniPlayer(
                         text = if (album.isNotEmpty()) "$artist • $album" else artist,
                         style = MaterialTheme.typography.bodySmall.copy(
                             shadow = if (isGlassTheme) Shadow(
-                                color = if (contentColor == Color.White) Color.Black.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.3f),
+                                color = if (contentColor.luminance() > 0.5f) Color.Black.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.3f),
                                 offset = Offset(1f, 1f),
                                 blurRadius = 2f
                             ) else null
@@ -232,7 +247,8 @@ fun NewMiniPlayer(
                             }
                             player.play()
                         }
-                    }
+                    },
+                    tint = contentColor
                 )
 
                 IconButton(
@@ -250,4 +266,3 @@ fun NewMiniPlayer(
         }
     }
 }
-
