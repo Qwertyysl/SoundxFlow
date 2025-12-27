@@ -1,4 +1,4 @@
-<h1 align="center">SoundxFlow</h1>
+<h1 align="center">Niusic</h1>
 
 <p align="center">
 An Android application for streaming music from YouTube Music.
@@ -62,7 +62,7 @@ An Android application for streaming music from YouTube Music.
 
 [<img src="https://github.com/machiav3lli/oandbackupx/blob/034b226cea5c1b30eb4f6a6f313e4dadcbb0ece4/badge_github.png"
 alt="Get it on GitHub"
-height="80">](https://github.com/qwertyysl/SoundxFlow/releases/latest)
+height="80">](https://github.com/qwertyysl/Niusic/releases/latest)
 
 ## 🌟 Inspiration
 

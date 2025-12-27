@@ -17,7 +17,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "SoundxFlow"
+rootProject.name = "Niusic"
 
 // Modules
 include(":app")

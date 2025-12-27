@@ -16,15 +16,15 @@ kotlin {
 }
 
 android {
-    namespace = "com.github.soundxflow"
+    namespace = "com.github.niusic"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.github.soundxflow"
+        applicationId = "com.github.niusic"
         minSdk = 23
         targetSdk = 36
-        versionCode = 14
-        versionName = "2.0.0"
+        versionCode = 15
+        versionName = "2.1.0"
     }
 
     splits {

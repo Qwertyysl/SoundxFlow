@@ -1,4 +1,13 @@
-# Changelog - SoundxFlow v2.0.0
+# Changelog - Niusic
+
+## [2.1.0] - 2025-12-27
+
+### Added
+- **Android 16 Support**: Initial compatibility for Android 16 (API 36).
+
+### Changed
+- **Rebranding**: Complete migration from SoundxFlow to Niusic.
+- **Package Update**: Package renamed to `com.github.niusic`.
 
 ## [2.0.0] - 2025-12-27
 
@@ -11,10 +20,10 @@
 - **Frosted Backgrounds**: Player background now extracts and spreads dominant colors from album art for a richer glass effect.
 
 ### Changed
-- **App Rebranding**: Officially renamed the application to **SoundxFlow**.
+- **App Rebranding**: Officially renamed the application to **Niusic**.
 - **Homepage Redesign**: Optimized the homepage with high-performance radial gradients for a smooth glass look.
 - **Lyrics Visibility**: Improved readability for floating lyrics with a darkened overlay.
-- **About Section**: Updated support contacts to `mnxzmi98@gmail.com` and repository links to `Qwertyysl/SoundxFlow`.
+- **About Section**: Updated support contacts to `mnxzmi98@gmail.com` and repository links to `Qwertyysl/Niusic`.
 
 ### Fixed
 - **App Icon**: Resolved an issue where the app icon wasn't updating correctly.

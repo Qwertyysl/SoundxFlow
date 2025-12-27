@@ -1,6 +1,6 @@
 ---
 name: "\U0001F41E Bug Report"
-about: Report something that isn't working correctly in SoundxFlow
+about: Report something that isn't working correctly in Niusic
 title: Bug
 labels: bug
 assignees: ''
@@ -51,3 +51,4 @@ If you can capture logs, include them here.
 
 ## 💡 Additional Notes
 Anything else we should know?
+

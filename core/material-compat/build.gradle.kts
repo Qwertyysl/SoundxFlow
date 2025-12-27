@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.soundxflow.materialcompat"
+    namespace = "com.niusic.materialcompat"
     compileSdk = 36
 
     defaultConfig {
@@ -31,4 +31,5 @@ dependencies {
 kotlin {
     jvmToolchain(17)
 }
+
 

@@ -1,17 +1,17 @@
 <resources>
 
-    <style name="Theme.SoundxFlow" parent="Theme.Material3.DayNight.NoActionBar">
+    <style name="Theme.Niusic" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
 
-    <style name="Theme.MusicYou.Settings" parent="Theme.SoundxFlow">
+    <style name="Theme.MusicYou.Settings" parent="Theme.Niusic">
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowActionBar">false</item>
     </style>
 
     <style name="Theme.App.Starting" parent="Theme.SplashScreen">
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
-        <item name="postSplashScreenTheme">@style/Theme.SoundxFlow</item>
+        <item name="postSplashScreenTheme">@style/Theme.Niusic</item>
     </style>
 </resources>
